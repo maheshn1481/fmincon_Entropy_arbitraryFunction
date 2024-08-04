@@ -42,7 +42,7 @@ Power = 20*ones(Ntime,1);
 temperature = zeros(Ntime,1);
 
 for iii = 1:Ntime
-    temperature(iii) = pennesmht(20,kmean,wmean,Power(iii),.001);
+    temperature(iii) = pennesmht(kmean,wmean,crhomean,.001,Power(iii));
 end
 
 %% Plot initial guess
@@ -272,34 +272,18 @@ jacobianState = initConst.ceqGrad(myidx.state,:);
 adjointvar =-jacobianState \objectiveGradState ;
 MIobjfun_Der = objectiveGradFA +  jacobianFA *   adjointvar ;
 end
-% function tempqoi = pennesmht(k,w,crho,chi,P)
-%       mua   = 0.45e+2
-%       mus   = 47.0e+2
-%       anfact= .9
-%       mutr  = mua+mus*(1.0-anfact)
-%       mueff = sqrt(3.0*mua*mutr)
-%       ua    =  310
-%       R1    =  .001
-%       R2    =  .03
-%       cblood = 3840.0
-%       r = .001
-%       u0 = 21;
-%       s1 = 3.0/4.0/pi*P*mua*mutr/(w-k*mueff*mueff)*exp(-mueff*r)/r+ua;      s2 = s1;      s5 = 1/r*exp(sqrt(w/k)*r)*(-4.0*sqrt(w/k)*R2*exp(-sqrt(w/k)*R2)*u0*pi*R1*w+4.0*sqrt(w/k)*R2*exp(-sqrt(w/k)*R2)*u0*pi*R1*k*mueff*mueff+3.0*sqrt(w/k)*R2*P*mua*mutr*exp(-sqrt(w/k)*R2-mueff*R1)+4.0*sqrt(w/k)*R2*exp(-sqrt(w/k)*R2)*ua*pi*R1*w-4.0*sqrt(w/k)*R2*exp(-sqrt(w/k)*R2)*ua*pi*R1*k*mueff*mueff-3.0*P*mua*mutr*mueff*R2*exp(-mueff*R2-sqrt(w/k)*R1)-3.0*P*mua*mutr*exp(-mueff*R2-sqrt(w/k)*R1)+4.0*exp(-sqrt(w/k)*R2)*ua*pi*R1*w-4.0*exp(-sqrt(w/k)*R2)*u0*pi*R1*w+4.0*exp(-sqrt(w/k)*R2)*u0*pi*R1*k*mueff*mueff+3.0*P*mua*mutr*exp(-sqrt(w/k)*R2-mueff*R1)-4.0*exp(-sqrt(w/k)*R2)*ua*pi*R1*k*mueff*mueff)/4.0;
-%       s6 = exp(-sqrt(w/k)*(-R1+R2))/(-w+k*mueff*mueff)/pi/(exp(-2.0*sqrt(w/k)*(-R1+R2))+sqrt(w/k)*R2*exp(-2.0*sqrt(w/k)*(-R1+R2))-1.0+sqrt(w/k)*R2);      s4 = s5*s6;      s6 = 1/r*exp(-sqrt(w/k)*r)*exp(-sqrt(w/k)*(-R1+R2))/4.0;
-%       s9 = 4.0*exp(sqrt(w/k)*R2)*u0*pi*R1*w-4.0*exp(sqrt(w/k)*R2)*u0*pi*R1*w*sqrt(w/k)*R2-4.0*exp(sqrt(w/k)*R2)*u0*pi*R1*k*mueff*mueff+4.0*exp(sqrt(w/k)*R2)*u0*pi*R1*k*mueff*mueff*sqrt(w/k)*R2-3.0*P*mua*mutr*exp(sqrt(w/k)*R2-mueff*R1)+3.0*P*mua*mutr*sqrt(w/k)*R2*exp(sqrt(w/k)*R2-mueff*R1)-4.0*exp(sqrt(w/k)*R2)*ua*pi*R1*w+4.0*exp(sqrt(w/k)*R2)*ua*pi*R1*w*sqrt(w/k)*R2+4.0*exp(sqrt(w/k)*R2)*ua*pi*R1*k*mueff*mueff-4.0*exp(sqrt(w/k)*R2)*ua*pi*R1*k*mueff*mueff*sqrt(w/k)*R2+3.0*P*mua*mutr*mueff*R2*exp(sqrt(w/k)*R1-mueff*R2)+3.0*P*mua*mutr*exp(sqrt(w/k)*R1-mueff*R2);      s10 = 1/(exp(-2.0*sqrt(w/k)*(-R1+R2))+sqrt(w/k)*R2*exp(-2.0*sqrt(w/k)*(-R1+R2))-1.0+sqrt(w/k)*R2);      s8 = s9*s10;      s9 = 1/pi/(-w+k*mueff*mueff);      s7 = s8*s9;      s5 = s6*s7;      s3 = s4+s5;
-%      tempqoi  = s2+s3;
-% end
 
-function tempqoi = pennesmht(rho_t,cp_t,k_t,w_t,Qm_t,H,Md,Keff)
+function tempqoi = pennesmht(k_t,w_t,rhocp_t,Md,H)
 %%% Following are the inputs for the function
-% rho_t = Tissue Density [kg/m3]
-% cp_t = Tissue Specific Heat [J/kg/K]
+% rhocp_t = Tissue Density [kg/m3] * cp_t = Tissue Specific Heat [J/kg/K]
 % k_t = Tissue Thermal Conductivity [W/m/K]
 % w_t = Blood Perfusion Rate [1/s]
 % Qm_t = Metabolic Heat Generation Rate [W/m3]
 % H = Applied Magnetic Field [A/m]
 % Md = Domain Magnetization Value of MNP [A/m]
-% Keff = Mangetic Anistropy Constant of MNP [J/m3]
+% Keff = Magnetic Anistropy Constant of MNP [J/m3]
+Qm_t = 0.0;
+Keff = 1.0;
 
 %%% Domain Parameters
 RT = 0.005;               % [m] Radius of the Tumor
@@ -328,7 +312,7 @@ T_b = 37;               % [°C] Blood Arterial Temperature
 T_bK = T_b + 273.15;    % [K] Blood Arterial Temperature
 
 T_initial = 37;     % [°C] Initial Condition Temperature
-alpha_t = k_t/(rho_t*cp_t); % Tissue Thermal diffusivity [m^2/s]
+alpha_t = k_t/(rhocp_t); % Tissue Thermal diffusivity [m^2/s]
 f = 1e5;    % [Hz] Magnetic Field Frequency f = 100 kHz
 
 %%% Magnetic Nanoparticle Physical and Magnetic Parameters MNP Used: Fe3O4
@@ -379,14 +363,14 @@ Main  = zeros(N, 1);
 Upper = zeros(N, 1);
 for i = 1:N
     if i ==1 % Symmetry Node
-        Main(i) = 1 + 2*alpha_t*dt/(dr^2) + rho_b*cp_b*w_t*dt/(rho_t*cp_t);
+        Main(i) = 1 + 2*alpha_t*dt/(dr^2) + rho_b*cp_b*w_t*dt/(rhocp_t);
         Upper(i) = -2*alpha_t*dt/(dr^2);
     elseif i == N % Fixed Temperature Node
         Lower(i) = -k_t/dr;
         Main(i) = k_t/dr+htc;
     else % Internal Nodes
         Lower(i) = -alpha_t*dt/(dr^2) + alpha_t*dt/(r(i)*dr);
-        Main(i) = 1 + 2*alpha_t*dt/(dr^2) + rho_b*cp_b*w_t*dt/(rho_t*cp_t);
+        Main(i) = 1 + 2*alpha_t*dt/(dr^2) + rho_b*cp_b*w_t*dt/(rhocp_t);
         Upper(i) = -alpha_t*dt/(dr^2) - alpha_t*dt/(r(i)*dr);
     end
 end
@@ -394,7 +378,7 @@ q_mnp = Q_MNP*t_loc;            % MNP heat generation [W/m^3] On for all simulat
 %%% Solver Time Iterations
 for n = 2:TS
     Force = zeros(N,1); % Force vector
-    Force(1:N-1)  = T(1:N-1,n-1) + (rho_b*cp_b.*w_t*dt*T_b + Qm_t*dt+ q_mnp(1:N-1)*dt)/(rho_t*cp_t);
+    Force(1:N-1)  = T(1:N-1,n-1) + (rho_b*cp_b.*w_t*dt*T_b + Qm_t*dt+ q_mnp(1:N-1)*dt)/(rhocp_t);
     Force(N) = htc*T_amb;
     T(:,n) = thomas_algorithm(Lower, Main, Upper, Force); % Spatio-Temporal Temperature
 end
