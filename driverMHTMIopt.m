@@ -9,152 +9,37 @@ myoptions.Algorithm = 'constDirect'
 %function driverHPMIopt(NGauss,NumberUncertain,modelSNR,myoptions,ObjectiveType,GaussLegendre )
 NGauss = 3,NumberUncertain=1,modelSNR=10, ObjectiveType = 'TotalSignal',GaussLegendre=false
 
-
 NGauss,NumberUncertain,modelSNR,myoptions.Algorithm,ObjectiveType,GaussLegendre
 close all
-%% Tissue Parameters
-kmean = [ .5 ]; % s
-kstdd = [ .2 ]; % s
-klb   = [ 5  ]; % s
-kub   = [ 45 ]; % s
-wmean = [ 6  ]; % s
-wstdd = [ 3  ]; % s
-wlb   = [ 2  ]; % s
-wub   = [ 10 ]; % s
-crhomean = [ 30000 ];       % s
-crhostdd = [ 10000 ];       % s
-crholb   = [ 20000 ];       % s
-crhoub   = [ 40000 ];       % s
-chimean = [ 0.05 ];      % s
-chistdd = [ .01  ];      % s
-chilb   = [ 0.01 ];      % s
-chiub   = [ 0.20 ];      % s
-ubmean  = [ 4    ];      % s
-ubsttd  = [ 1.3  ];      % s
-ublb    = [ 0    ];       % s
-ubub    = [ 7    ];       % s
+
 
 %% Variable Setup
 Ntime = 30;
-currentTR = 3;
-timelist = (0:(Ntime-1))*currentTR ;
-Power = 20*ones(Ntime,1);
-temperature = zeros(Ntime,1);
-
-for iii = 1:Ntime
-    temperature(iii) = pennesmht(kmean,wmean,crhomean,.001,Power(iii));
+deltat = 3;
+Nspecies = 1
+magneticField = 20* ones(Ntime,1);
+% switch between uniform and Gaussian RV for prior
+if(GaussLegendre)
+    QuadratureRule = 'Legendre';
+else
+    QuadratureRule = 'Hermite';
 end
 
-%% Plot initial guess
-plotinit = true;
-if plotinit
-    % plot initial guess
-    figure(1)
-    plot(timelist ,temperature)
-    ylabel('temperature ')
-    xlabel('sec')
-end
-
+% debug
+pennesmht(.5,6,30000,.05,1*ones(30,1))
+pennesmht(.5,6,30000,.05,5*ones(30,1))
+pennesmht(.5,6,30000,.05,10*ones(30,1))
+pennesmht(.5,6,30000,.05,20*ones(30,1))
 
 %% optimize MI
-optf = true;
+optf = false;
 if optf
 
     tic;
-    % setup optimization variables
-    Nspecies = 1
-    powerList = optimvar('powerList',Nspecies,Ntime,'LowerBound',0, 'UpperBound',35);
-
-    signu = sqrt(2* Ntime) * 10;
-    [x2,xn2,xm2,w2,wn2]=GaussHermiteNDGauss(NGauss,0,signu);
-    lqp2=length(xn2{1}(:));
-
-    % switch between uniform and Gaussian RV for prior
-    if(GaussLegendre)
-        QuadratureRule = 'Legendre';
-    else
-        QuadratureRule = 'Hermite';
-    end
-    switch (NumberUncertain)
-        case(1)
-            if(GaussLegendre)
-                [x,xn,xm,w,wn]=GaussLegendreNDGauss(NGauss,chilb,chiub);
-            else
-                [x,xn,xm,w,wn]=GaussHermiteNDGauss(NGauss,chimean,chistdd);
-            end
-            kqp     = kmean;
-            wqp     = wmean;
-            crhoqp  = crhomean;
-            chiqp   = xn{1}(:);
-        case(4)
-            if(GaussLegendre)
-                [x,xn,xm,w,wn]=GaussLegendreNDGauss(NGauss,[klb; wlb; crholb; chilb],[kub; wub; crhoub; chiub]);
-            else
-                [x,xn,xm,w,wn]=GaussHermiteNDGauss(NGauss,[kmean; wmean; crhomean; chimean],[kstdd; wstdd; crhostdd; chistdd]);
-            end
-            kqp    = xn{1}(:);
-            wqp    = xn{2}(:);
-            crhoqp = xn{3}(:);
-            chiqp  = xn{4}(:);
-    end
-    %alphaqp = xn{6}(:);
-    %betaqp  = xn{7}(:);
-
-    lqp=length(xn{1}(:));
-    %statevariable    = optimvar('state',Ntime,Nspecies,lqp,'LowerBound',0,'UpperBound',.1);
-    statevariable  = optimvar('state',Ntime,Nspecies,lqp,'LowerBound',0);
-    auxvariable      = optimexpr(   [Ntime,Nspecies,lqp]);
-    stateconstraint  = optimconstr(    [Ntime,Nspecies,lqp]);
-
-    disp('build state variable')
-
-    % [expATRoneone(end),0; expATRtwoone(end), expATRtwotwo(end)]
-    % IC
-    stateconstraint(1,:,:)  = statevariable(1,:,:) ==0;
-    auxvariable(1,:,:) =0;
-    for iii = 1:Ntime-1
-        % setup state as linear constraint
-        auxvariable(iii+1,1,:) =  pennesmht(kqp,wqp,crhoqp,chiqp,powerList(iii+1));
-        stateconstraint(iii+1,1,:)  = statevariable(iii+1,1,:) ==  pennesmht(kqp,wqp,crhoqp,chiqp,powerList(iii+1));
-    end
-
-
-    disp('build objective function')
-    expandvar  = ones(1,lqp);
-
-    switch (ObjectiveType)
-        case('TotalSignal')
-            % TODO - repmat does not work well with AD
-            % TODO - replace repmat with matrix
-            % sumstatevariable = squeeze(sum(repmat(sin(FaList)',1,1,lqp).*statevariable,1));
-            sumstatevariable = optimexpr([Nspecies,lqp]);
-            for jjj = 1:lqp
-                sumstatevariable(:,jjj) =  sum(statevariable(:,:,jjj) ,1)';
-
-            end
-            diffsumm =sumstatevariable(1,:)' * expandvar   - expandvar' * sumstatevariable(1,:);
-            negHz = 0;
-            for jjj=1:lqp2
-                znu=xn2{1}(jjj) ;
-                % note that the sqrt(pi)^N+1  and 2^N factors from the integration over priors is included in the quadrature routines.
-                % this makes is easier to switch between Gaussian and Uniform RV
-                negHz = negHz + wn2(jjj) * (wn(:)' * log(exp(-(znu + diffsumm).^2/2/signu^2 - log(signu) -log(2*pi)/2   ) * wn(:)));
-            end
-    end
-    % MI = H(z) - H(z|P)
-    %  H(z|P)  constant ==> max MI = max H(z) = min -H(z)
-    MIGaussObj = negHz;
 
     %%
     % Create an optimization problem using these converted optimization expressions.
     disp('create optim prob')
-    convprob = optimproblem('Objective',MIGaussObj , "Constraints",stateconstraint);
-    myidx = varindex(convprob )
-    %%
-    % View the new problem.
-    %show(convprob)
-    problem = prob2struct(convprob,'ObjectiveFunctionName','reducedObjective','ConstraintFunctionName','reducedConstraint');
-
 
     % compare walker solution at qp
     switch (NumberUncertain)
@@ -181,10 +66,8 @@ if optf
                 perc_str = sprintf('completed %3.1f', percentage);
                 fprintf([backspaces, perc_str]);
                 backspaces = repmat(sprintf('\b'), 1, length(perc_str));
-
-                x0.powerList = repmat(powergrid(iii),1,Ntime);
-                x0.state  = evaluate(auxvariable ,x0);
-                brutesearch(iii) = evaluate(MIGaussObj,x0);
+                constH = powergrid(iii)* ones(Ntime,1);
+                brutesearch(iii) = MIGHQuadMHT(constH,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType);
             end
             save(sprintf('brutesearchNG%dNu%d%s%sSNR%02d%s.mat',NGauss,NumberUncertain,myoptions.Algorithm,ObjectiveType,modelSNR,QuadratureRule) ,'brutesearch','powergrid')
             [maxMI,idmax] = max(brutesearch(:));
@@ -211,7 +94,7 @@ if optf
 
             % truthconstraint = infeasibility(stateconstraint,x0);
             %[popt,fval,exitflag,output] = solve(convprob,x0,'Options',myoptions, 'ConstraintDerivative', 'auto-reverse', 'ObjectiveDerivative', 'auto-reverse' )
-            Fx = @(x) MIGHQuadHPTofts(x, problem, myidx,Nspecies,Ntime,auxvariable);
+            Fx = @(x) MIGHQuadMHT(x, problem, myidx,Nspecies,Ntime,auxvariable);
             [designopt,fval,exitflag,output,lambda,grad,hessian] ...
                 =fmincon(Fx, InitialGuess ,[],[],[],[],pmin,pmax,[],myoptions);
 
@@ -223,7 +106,6 @@ if optf
     % save convergence history
     set(gca,'FontSize',16)
     saveas(handle,sprintf('historyNG%dNu%d%s%sSNR%02d%s',NGauss,NumberUncertain,myoptions.Algorithm,ObjectiveType,modelSNR,QuadratureRule ),'png')
-    popt.state       = evaluate(auxvariable, popt);
     toc;
 
 
@@ -259,26 +141,100 @@ if optf
 end
 
 
-function [MIobjfun, MIobjfun_Der]=MIGHQuadHPTofts(xopt,problem,myidx,Nspecies,Ntime,auxvariable)
-x0.FaList = reshape(xopt,Nspecies,Ntime);
-x0.state  = evaluate(auxvariable ,x0);
-Xfull = [ x0.FaList(:); x0.state(:)];
-[MIobjfun,initVals.g] = problem.objective(Xfull);
-[initConst.ineq,initConst.ceq, initConst.ineqGrad,initConst.ceqGrad] = problem.nonlcon(Xfull);
-objectiveGradFA    = initVals.g(myidx.FaList);
-objectiveGradState = initVals.g(myidx.state);
-jacobianFA    = initConst.ceqGrad(myidx.FaList,:);
-jacobianState = initConst.ceqGrad(myidx.state,:);
-adjointvar =-jacobianState \objectiveGradState ;
-MIobjfun_Der = objectiveGradFA +  jacobianFA *   adjointvar ;
+% evaluate MI
+function MIobjfun =MIGHQuadMHT(hOpt,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType)
+    %% Tissue Parameters
+    kmean = [ .5 ]; % s
+    kstdd = [ .2 ]; % s
+    klb   = [ 5  ]; % s
+    kub   = [ 45 ]; % s
+    wmean = [ 6  ]; % s
+    wstdd = [ 3  ]; % s
+    wlb   = [ 2  ]; % s
+    wub   = [ 10 ]; % s
+    crhomean = [ 30000 ];       % s
+    crhostdd = [ 10000 ];       % s
+    crholb   = [ 20000 ];       % s
+    crhoub   = [ 40000 ];       % s
+    chimean = [ 0.05 ];      % s
+    chistdd = [ .01  ];      % s
+    chilb   = [ 0.01 ];      % s
+    chiub   = [ 0.20 ];      % s
+    ubmean  = [ 4    ];      % s
+    ubsttd  = [ 1.3  ];      % s
+    ublb    = [ 0    ];       % s
+    ubub    = [ 7    ];       % s
+
+    %% signal uncertianty
+    signu = sqrt(2* Ntime) * 10;
+    [x2,xn2,xm2,w2,wn2]=GaussHermiteNDGauss(NGauss,0,signu);
+    lqp2=length(xn2{1}(:));
+
+    % switch between uniform and Gaussian RV for prior
+    if(GaussLegendre)
+        QuadratureRule = 'Legendre';
+    else
+        QuadratureRule = 'Hermite';
+    end
+    disp('evaluate quadrature points')
+    switch (NumberUncertain)
+        case(1)
+            if(GaussLegendre)
+                [x,xn,xm,w,wn]=GaussLegendreNDGauss(NGauss,chilb,chiub);
+            else
+                [x,xn,xm,w,wn]=GaussHermiteNDGauss(NGauss,chimean,chistdd);
+            end
+            chiqp   = xn{1}(:);
+            % evaluate function at each quadrature point
+            lqp=length(xn{1}(:));
+            sumstatevariable      = zeros(Nspecies,lqp);
+            for iqp = 1:lqp
+              sumstatevariable(1,iqp) =  pennesmht(kmean,wmean,crhomean,chiqp(iqp),hOpt);
+            end
+        case(4)
+            if(GaussLegendre)
+                [x,xn,xm,w,wn]=GaussLegendreNDGauss(NGauss,[klb; wlb; crholb; chilb],[kub; wub; crhoub; chiub]);
+            else
+                [x,xn,xm,w,wn]=GaussHermiteNDGauss(NGauss,[kmean; wmean; crhomean; chimean],[kstdd; wstdd; crhostdd; chistdd]);
+            end
+            kqp    = xn{1}(:);
+            wqp    = xn{2}(:);
+            crhoqp = xn{3}(:);
+            chiqp  = xn{4}(:);
+            % evaluate function at each quadrature point
+            lqp=length(xn{1}(:));
+            sumstatevariable      = zeros(Nspecies,lqp);
+            for iqp = 1:lqp
+              sumstatevariable(1,iqp) =  pennesmht(kqp(iqp),wqp(iqp),crhoqp(iqp),chiqp(iqp),hOpt);
+            end
+    end
+
+    disp('build objective function')
+    expandvar  = ones(1,lqp);
+
+    switch (ObjectiveType)
+        case('TotalSignal')
+            diffsumm =sumstatevariable(1,:)' * expandvar   - expandvar' * sumstatevariable(1,:);
+            negHz = 0;
+            for jjj=1:lqp2
+                znu=xn2{1}(jjj) ;
+                % note that the sqrt(pi)^N+1  and 2^N factors from the integration over priors is included in the quadrature routines.
+                % this makes is easier to switch between Gaussian and Uniform RV
+                negHz = negHz + wn2(jjj) * (wn(:)' * log(exp(-(znu + diffsumm).^2/2/signu^2 - log(signu) -log(2*pi)/2   ) * wn(:)));
+            end
+    end
+    % MI = H(z) - H(z|P)
+    %  H(z|P)  constant ==> max MI = max H(z) = min -H(z)
+    MIobjfun = negHz;
 end
 
-function tempqoi = pennesmht(k_t,w_t,rhocp_t,Md,H)
+function tempqoi = pennesmht(k_t,w_t,rhocp_t,Md,Htime)
 %%% Following are the inputs for the function
 % rhocp_t = Tissue Density [kg/m3] * cp_t = Tissue Specific Heat [J/kg/K]
 % k_t = Tissue Thermal Conductivity [W/m/K]
 % w_t = Blood Perfusion Rate [1/s]
 % Qm_t = Metabolic Heat Generation Rate [W/m3]
+H=Htime(1) % TODO - @mahesh make this time varying
 % H = Applied Magnetic Field [A/m]
 % Md = Domain Magnetization Value of MNP [A/m]
 % Keff = Magnetic Anistropy Constant of MNP [J/m3]
