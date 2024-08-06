@@ -26,10 +26,10 @@ else
 end
 
 % debug
-pennesmht(.5,6,30000,.05,1*ones(30,1))
-pennesmht(.5,6,30000,.05,5*ones(30,1))
-pennesmht(.5,6,30000,.05,10*ones(30,1))
-pennesmht(.5,6,30000,.05,20*ones(30,1))
+pennesmht(.5,6,30000,.05,1*ones(30,1),deltat)
+pennesmht(.5,6,30000,.05,5*ones(30,1),deltat)
+pennesmht(.5,6,30000,.05,10*ones(30,1),deltat)
+pennesmht(.5,6,30000,.05,20*ones(30,1),deltat)
 
 %% optimize MI
 optf = false;
@@ -67,7 +67,7 @@ if optf
                 fprintf([backspaces, perc_str]);
                 backspaces = repmat(sprintf('\b'), 1, length(perc_str));
                 constH = powergrid(iii)* ones(Ntime,1);
-                brutesearch(iii) = MIGHQuadMHT(constH,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType);
+                brutesearch(iii) = MIGHQuadMHT(constH,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat);
             end
             save(sprintf('brutesearchNG%dNu%d%s%sSNR%02d%s.mat',NGauss,NumberUncertain,myoptions.Algorithm,ObjectiveType,modelSNR,QuadratureRule) ,'brutesearch','powergrid')
             [maxMI,idmax] = max(brutesearch(:));
@@ -94,14 +94,14 @@ if optf
 
             % truthconstraint = infeasibility(stateconstraint,x0);
             %[popt,fval,exitflag,output] = solve(convprob,x0,'Options',myoptions, 'ConstraintDerivative', 'auto-reverse', 'ObjectiveDerivative', 'auto-reverse' )
-            Fx = @(x) MIGHQuadMHT(x, problem, myidx,Nspecies,Ntime,auxvariable);
-            [designopt,fval,exitflag,output,lambda,grad,hessian] ...
-                =fmincon(Fx, InitialGuess ,[],[],[],[],pmin,pmax,[],myoptions);
+            %% Fx = @(x) MIGHQuadMHT(x, problem, myidx,Nspecies,Ntime,auxvariable);
+            %% [designopt,fval,exitflag,output,lambda,grad,hessian] ...
+            %%     =fmincon(Fx, InitialGuess ,[],[],[],[],pmin,pmax,[],myoptions);
 
-            handle = figure(5)
-            optparams.FaList = reshape(designopt(:),size(params.FaList ));
-            refparams.FaList = reshape(designopt(:),size(params.FaList ));
-            popt.FaList      = reshape(designopt(:),size(params.FaList ));
+            %% handle = figure(5)
+            %% optparams.FaList = reshape(designopt(:),size(params.FaList ));
+            %% refparams.FaList = reshape(designopt(:),size(params.FaList ));
+            %% popt.FaList      = reshape(designopt(:),size(params.FaList ));
     end
     % save convergence history
     set(gca,'FontSize',16)
@@ -142,28 +142,27 @@ end
 
 
 % evaluate MI
-function MIobjfun =MIGHQuadMHT(hOpt,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType)
-    %% Tissue Parameters
+function MIobjfun =MIGHQuadMHT(hOpt,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)
+    %% Thermal conductivity 
     kmean = [ .5 ]; % s
     kstdd = [ .2 ]; % s
     klb   = [ 5  ]; % s
     kub   = [ 45 ]; % s
+    %% perfusion 
     wmean = [ 6  ]; % s
     wstdd = [ 3  ]; % s
     wlb   = [ 2  ]; % s
     wub   = [ 10 ]; % s
+    %% rho * specific heat 
     crhomean = [ 30000 ];       % s
     crhostdd = [ 10000 ];       % s
     crholb   = [ 20000 ];       % s
     crhoub   = [ 40000 ];       % s
-    chimean = [ 0.05 ];      % s
-    chistdd = [ .01  ];      % s
-    chilb   = [ 0.01 ];      % s
-    chiub   = [ 0.20 ];      % s
-    ubmean  = [ 4    ];      % s
-    ubsttd  = [ 1.3  ];      % s
-    ublb    = [ 0    ];       % s
-    ubub    = [ 7    ];       % s
+    %% domain magnetization 
+    mdmean = [ 0.05 ];      % s
+    mdstdd = [ .01  ];      % s
+    mdlb   = [ 0.01 ];      % s
+    mdub   = [ 0.20 ];      % s
 
     %% signal uncertianty
     signu = sqrt(2* Ntime) * 10;
@@ -180,32 +179,32 @@ function MIobjfun =MIGHQuadMHT(hOpt,NGauss,NumberUncertain,Nspecies,Ntime,GaussL
     switch (NumberUncertain)
         case(1)
             if(GaussLegendre)
-                [x,xn,xm,w,wn]=GaussLegendreNDGauss(NGauss,chilb,chiub);
+                [x,xn,xm,w,wn]=GaussLegendreNDGauss(NGauss,mdlb,mdub);
             else
-                [x,xn,xm,w,wn]=GaussHermiteNDGauss(NGauss,chimean,chistdd);
+                [x,xn,xm,w,wn]=GaussHermiteNDGauss(NGauss,mdmean,mdstdd);
             end
-            chiqp   = xn{1}(:);
+            mdqp   = xn{1}(:);
             % evaluate function at each quadrature point
             lqp=length(xn{1}(:));
             sumstatevariable      = zeros(Nspecies,lqp);
             for iqp = 1:lqp
-              sumstatevariable(1,iqp) =  pennesmht(kmean,wmean,crhomean,chiqp(iqp),hOpt);
+              sumstatevariable(1,iqp) =  pennesmht(kmean,wmean,crhomean,mdqp(iqp),hOpt,deltat);
             end
         case(4)
             if(GaussLegendre)
-                [x,xn,xm,w,wn]=GaussLegendreNDGauss(NGauss,[klb; wlb; crholb; chilb],[kub; wub; crhoub; chiub]);
+                [x,xn,xm,w,wn]=GaussLegendreNDGauss(NGauss,[klb; wlb; crholb; mdlb],[kub; wub; crhoub; mdub]);
             else
-                [x,xn,xm,w,wn]=GaussHermiteNDGauss(NGauss,[kmean; wmean; crhomean; chimean],[kstdd; wstdd; crhostdd; chistdd]);
+                [x,xn,xm,w,wn]=GaussHermiteNDGauss(NGauss,[kmean; wmean; crhomean; mdmean],[kstdd; wstdd; crhostdd; mdstdd]);
             end
             kqp    = xn{1}(:);
             wqp    = xn{2}(:);
             crhoqp = xn{3}(:);
-            chiqp  = xn{4}(:);
+            mdqp  = xn{4}(:);
             % evaluate function at each quadrature point
             lqp=length(xn{1}(:));
             sumstatevariable      = zeros(Nspecies,lqp);
             for iqp = 1:lqp
-              sumstatevariable(1,iqp) =  pennesmht(kqp(iqp),wqp(iqp),crhoqp(iqp),chiqp(iqp),hOpt);
+              sumstatevariable(1,iqp) =  pennesmht(kqp(iqp),wqp(iqp),crhoqp(iqp),mdqp(iqp),hOpt,deltat);
             end
     end
 
@@ -228,7 +227,7 @@ function MIobjfun =MIGHQuadMHT(hOpt,NGauss,NumberUncertain,Nspecies,Ntime,GaussL
     MIobjfun = negHz;
 end
 
-function tempqoi = pennesmht(k_t,w_t,rhocp_t,Md,Htime)
+function tempqoi = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
 %%% Following are the inputs for the function
 % rhocp_t = Tissue Density [kg/m3] * cp_t = Tissue Specific Heat [J/kg/K]
 % k_t = Tissue Thermal Conductivity [W/m/K]
@@ -238,6 +237,7 @@ H=Htime(1) % TODO - @mahesh make this time varying
 % H = Applied Magnetic Field [A/m]
 % Md = Domain Magnetization Value of MNP [A/m]
 % Keff = Magnetic Anistropy Constant of MNP [J/m3]
+% deltat = time step [s]
 Qm_t = 0.0;
 Keff = 1.0;
 
@@ -251,9 +251,8 @@ N = length(r);            % [-] Number of spatial nodes
 t_loc = r<=RT;            % [-] Tumor r indices
 
 %%% Time discretization: Implicit method is employed
-dt = 10;             % Time step [s]
-t_end = 1200;       % End time [s]
-t = 0:dt:t_end;     % Discrete times
+t = deltat*[0:size(Htime,1)];     % Discrete times
+dt = deltat;
 TS = length(t);     % Number of time steps
 
 %%% Ambient Conditions
