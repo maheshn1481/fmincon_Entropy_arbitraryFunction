@@ -14,8 +14,9 @@ close all
 
 
 %% Variable Setup
-Ntime = 30;
+t_end = 180;
 deltat = 3;
+Ntime = t_end/deltat;
 Nspecies = 1
 magneticField = 20* ones(Ntime,1);
 % switch between uniform and Gaussian RV for prior
@@ -26,11 +27,31 @@ else
 end
 
 % debug
-pennesmht(.5,6,30000,.05,1*ones(30,1),deltat)
-pennesmht(.5,6,30000,.05,5*ones(30,1),deltat)
-pennesmht(.5,6,30000,.05,10*ones(30,1),deltat)
-pennesmht(.5,6,30000,.05,20*ones(30,1),deltat)
 
+
+%%% Time varying Magnetic Field Amplitude Vector Creation
+Hmin = 7957;
+Hmax = 39788;
+H_range = (Hmin:Hmin:Hmax)';
+
+% Generate random indices
+indices = randi(length(H_range), 1, Ntime);
+
+% Create the random array
+Htime = H_range(indices);
+k_t=.527;
+w_t = 0.009;
+rhocp_t = 1045*3600;
+Md = 4.46e5;
+Gain_Variable_H = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
+Htime = 5000*ones(Ntime,1);
+Gain_H_5000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
+Htime = 10000*ones(Ntime,1);
+Gain_H_10000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
+Htime = 15000*ones(Ntime,1);
+Gain_H_15000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
+Htime = 20000*ones(Ntime,1);
+Gain_H_20000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
 %% optimize MI
 optf = false;
 if optf
@@ -146,23 +167,23 @@ function MIobjfun =MIGHQuadMHT(hOpt,NGauss,NumberUncertain,Nspecies,Ntime,GaussL
     %% Thermal conductivity 
     kmean = [ .5 ]; % s
     kstdd = [ .2 ]; % s
-    klb   = [ 5  ]; % s
-    kub   = [ 45 ]; % s
+    klb   = [ 0.1  ]; % s
+    kub   = [ 0.8 ]; % s
     %% perfusion 
-    wmean = [ 6  ]; % s
-    wstdd = [ 3  ]; % s
-    wlb   = [ 2  ]; % s
-    wub   = [ 10 ]; % s
+    wmean = [ 0.006  ]; % s
+    wstdd = [ 0.003  ]; % s
+    wlb   = [ 0.002  ]; % s
+    wub   = [ 0.010 ]; % s
     %% rho * specific heat 
-    crhomean = [ 30000 ];       % s
-    crhostdd = [ 10000 ];       % s
-    crholb   = [ 20000 ];       % s
-    crhoub   = [ 40000 ];       % s
+    crhomean = [ 3762000 ];       % s
+    crhostdd = [ 100000 ];       % s
+    crholb   = [ 3600000 ];       % s
+    crhoub   = [ 4000000 ];       % s
     %% domain magnetization 
-    mdmean = [ 0.05 ];      % s
-    mdstdd = [ .01  ];      % s
-    mdlb   = [ 0.01 ];      % s
-    mdub   = [ 0.20 ];      % s
+    mdmean = [ 446000 ];      % s
+    mdstdd = [ 100000  ];      % s
+    mdlb   = [ 200000 ];      % s
+    mdub   = [ 500000 ];      % s
 
     %% signal uncertianty
     signu = sqrt(2* Ntime) * 10;
@@ -233,17 +254,16 @@ function tempqoi = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
 % k_t = Tissue Thermal Conductivity [W/m/K]
 % w_t = Blood Perfusion Rate [1/s]
 % Qm_t = Metabolic Heat Generation Rate [W/m3]
-H=Htime(1) % TODO - @mahesh make this time varying
+% H=Htime(1) % TODO - @mahesh make this time varying
 % H = Applied Magnetic Field [A/m]
 % Md = Domain Magnetization Value of MNP [A/m]
 % Keff = Magnetic Anistropy Constant of MNP [J/m3]
 % deltat = time step [s]
-Qm_t = 0.0;
-Keff = 1.0;
+Qm_t = 0;                   % [W/m3] Tumor Metabolic Heat
 
 %%% Domain Parameters
 RT = 0.005;               % [m] Radius of the Tumor
-R = 5*RT;                 % [m] Radius of the computaional domain
+R = 1.1*RT;                 % [m] Radius of the computaional domain
 vol_t = (4*pi*RT^3)/3;    % [m3] Tumor Volume
 dr = RT/50;               % [m] Spatial discretization step size
 r = (0:dr:R)';            % [m] Spatial loactions
@@ -251,9 +271,19 @@ N = length(r);            % [-] Number of spatial nodes
 t_loc = r<=RT;            % [-] Tumor r indices
 
 %%% Time discretization: Implicit method is employed
-t = deltat*[0:size(Htime,1)];     % Discrete times
-dt = deltat;
+dt = 1;
+t = 0:size(Htime,1)*deltat;     % Discrete times
 TS = length(t);     % Number of time steps
+
+%%% Assigning the stepped H at each time in the steps.
+for i = 1: length(Htime)
+    % Calculate the starting index for the current iteration
+    startIndex = (i - 1) * (deltat)/dt + 1;
+    % Calculate the ending index for the current iteration
+    endIndex = min(startIndex + (deltat)/dt - 1, TS-1);
+    HVector(startIndex:endIndex) = Htime(i);   
+end
+
 
 %%% Ambient Conditions
 htc = 10;
@@ -275,6 +305,7 @@ d_mnp = 1.6e-8;                 % [m] MNP Diameter d = 16 nm
 delta_l = 1e-9;                 % [m] Liquid Layer Thickness on the Hard Solid MNP delta = 1 nm
 dh_mnp = d_mnp+2*delta_l;       % [m] MNP Hydrodynamic Diameter
 rho_mnp = 5180;                 % [kg/m3] MNP Density
+Keff = 20000;                   % [J/m3] Effective Anisotropy Constant Keff = 20 kJ/m3
 
 %%% MNP Dose and Magnetic Fluid Parameters
 MNP_dose = 4;                   % [kg/m3] MNP Dose MNP mass used per unit vol of tumor = 4 mg/cm3; % Conversion 1 mg/cm3 = 1 kg/m3
@@ -299,16 +330,7 @@ gamma = Keff*MNP_svol/(kB*T_bK);                    % [-] An intermediate parame
 tauB = (3*mu_cf*MNP_hvol)/(kB*T_bK);                % [s] Brownian Relaxation Time of MNP
 tauN = sqrt(pi)*tau0*exp(gamma)/(2*sqrt(gamma));    % [s] Neel Relaxation Time of MNP
 tauE = tauB*tauN/(tauB+tauN);                       % [s] Effective Relaxation Time of MNP
-zeta = mu0*Md*H*MNP_svol/(kB*T_bK);                 % [-] Langevin parameter
-X_i = mu0*(Md^2)*MNP_vol_frac*MNP_svol/(3*kB*T_bK); % [-] Initial Magnetic Susceptibility
-X_0 = 3*X_i*(coth(zeta)-1/zeta)/zeta;               % [-] Equilibrium Magnetic Susceptibility
-X_L = X_0*omega*tauE/(1+(omega*tauE)^2);            % [-] Loss Component of Magnetic Susceptibility
-P = pi*mu0*f*X_L*H^2;                               % [W/m3] Heat Generation rate of MNPs in MF
-SAR = P/(rho_mnp*MNP_vol_frac);                     % [W/kg] MNP Specific Absorption Rate
 
-%%% Heat Source by MNP in Tumor
-MNP_conc = MNP_mass/vol_t;      % [kg/m3] Concentration of MNP in Tumor, Assuming MNPs are distributed uniformly and confined within the tumor only
-Q_MNP = MNP_conc*SAR;  % [W/m3] Heat Generation by MNP in Tissue
 %% Implicit Finite Difference Scheme using the Cauchy Boundary Condition on the outer boundary
 T = zeros(N, TS);
 T(:,1) = T_initial; % Initial Condition
@@ -329,9 +351,25 @@ for i = 1:N
         Upper(i) = -alpha_t*dt/(dr^2) - alpha_t*dt/(r(i)*dr);
     end
 end
-q_mnp = Q_MNP*t_loc;            % MNP heat generation [W/m^3] On for all simulation time
 %%% Solver Time Iterations
 for n = 2:TS
+    H = HVector(n-1);
+    zeta = mu0*Md*H*MNP_svol/(kB*T_bK);                 % [-] Langevin parameter
+    X_i = mu0*(Md^2)*MNP_vol_frac*MNP_svol/(3*kB*T_bK); % [-] Initial Magnetic Susceptibility
+    X_0 = 3*X_i*(coth(zeta)-1/zeta)/zeta;               % [-] Equilibrium Magnetic Susceptibility
+    X_L = X_0*omega*tauE/(1+(omega*tauE)^2);            % [-] Loss Component of Magnetic Susceptibility
+    P = pi*mu0*f*X_L*H^2;                               % [W/m3] Heat Generation rate of MNPs in MF
+    SAR = P/(rho_mnp*MNP_vol_frac);                     % [W/kg] MNP Specific Absorption Rate
+    SAR_grams = SAR/1000;                               % [W/g] MNP Specific Absorption Rate
+
+    %%% Heat Source by MNP in Tumor
+    MNP_conc = MNP_mass/vol_t;      % [kg/m3] Concentration of MNP in Tumor, Assuming MNPs are distributed uniformly and confined within the tumor only
+    Q_MNP = alpha_CF*MNP_conc*SAR;  % [W/m3] Heat Generation by MNP in Tissue
+
+    %%% Assign Q_MNP to the center region only
+    q_mnp = Q_MNP*t_loc;        % MNP heat generation [W/m^3] On/Off Pulsating with time
+    q_mnp_time(:,n-1) = q_mnp;
+
     Force = zeros(N,1); % Force vector
     Force(1:N-1)  = T(1:N-1,n-1) + (rho_b*cp_b.*w_t*dt*T_b + Qm_t*dt+ q_mnp(1:N-1)*dt)/(rhocp_t);
     Force(N) = htc*T_amb;
@@ -340,8 +378,59 @@ end
 
 %%
 T_sum_time = sum(T,2);      % Summation of Temperature over all Times at each r location
-G = trapz(r, 4*pi*r.^2.*T_sum_time);     % Integration of Temperature over the domain in 3D
+G = trapz(r, T_sum_time);     % Integration of Temperature over the domain in 3D
 tempqoi = G;
+%% Plot the results
+q_mnp_t = [q_mnp_time(:,1),q_mnp_time];
+[RR,TT] = meshgrid(r,t);
+figure('Position', [40, 40, 600, 600])
+subplot(2,2,1)
+plot((1:length(HVector))*dt,HVector)
+xlim([0,t(end)])
+xticks([0:t(end)/4:t(end)]);
+xlabel('Time [s]')
+ylabel('H Amplitude, [A/m]');
+title('Magnetic Field');
+
+subplot(2,2,2)
+surf(RR,TT,q_mnp_t')
+xlabel('Radial Distance [m]')
+ylabel('Time [s]');
+zlabel('Qmnp [W/m^3]');
+title('Spatio-Temporal Heat Source');
+xlim([0,R])
+xticks([0,RT/2,RT,R]);
+ylim([0,t(end)])
+yticks([0:t(end)/4:t(end)]);
+grid on;
+
+subplot(2,2,3)
+plot_radius = [0,RT,R];
+legend_String = string(plot_radius)+[" m Tumor Center"," m Tumor Edge"," m Outer Boundary"];
+plot_rad_idx = (plot_radius/dr)+1;
+plot(t,T(plot_rad_idx,:), 'LineWidth',2)
+xlabel('Time, t [s]');
+ylabel('Temperature, T [°C]');
+xlim([0,t(end)])
+xticks([0:t(end)/4:t(end)]);
+legend(legend_String, Location='best')
+title('Temperature Elevations');
+grid on;
+
+subplot(2,2,4)
+plot_time = [60,120,t(end)];
+legend_String = string(plot_time)+[" s"," s"," s"];
+plot_ind = (plot_time/dt)+1;
+plot(r,T(:,plot_ind),'LineWidth',2)
+hold on
+xlabel('Radial distance, r [m]');
+xlim([0,R])
+xticks(0:R/5:R);
+ylabel('Temperature, T [°C]');
+legend(legend_String, Location='best')
+title('Spatial Temperature profile');
+grid on;
+
 %% Tri-Diagonal Matrix Alogorithm for Linear System of Equation Solver
     function x = thomas_algorithm(Lower, Main, Upper, Force)
         nn = length(Force);
