@@ -27,30 +27,31 @@ else
 end
 
 % debug
-
+k_t=.527;
+w_t = 0.009;
+rhocp_t = 1045*3600;
+Md = 4.46e5;
 
 %%% Time varying Magnetic Field Amplitude Vector Creation
 Hmin = 7957;
 Hmax = 39788;
 H_range = (Hmin:Hmin:Hmax)';
-
 % Generate random indices
 indices = randi(length(H_range), 1, Ntime);
-
 % Create the random array
-Htime = H_range(indices);
-k_t=.527;
-w_t = 0.009;
-rhocp_t = 1045*3600;
-Md = 4.46e5;
+Htime = H_range(indices); % Random variation of H in time and constant within each step of "deltat"
 Gain_Variable_H = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
-Htime = 5000*ones(Ntime,1);
+
+Htime = 5000*ones(Ntime,1); % Constant H in time
 Gain_H_5000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
-Htime = 10000*ones(Ntime,1);
+
+Htime = 10000*ones(Ntime,1); % Constant H in time
 Gain_H_10000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
-Htime = 15000*ones(Ntime,1);
+
+Htime = 15000*ones(Ntime,1); % Constant H in time
 Gain_H_15000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
-Htime = 20000*ones(Ntime,1);
+
+Htime = 20000*ones(Ntime,1); % Constant H in time
 Gain_H_20000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
 %% optimize MI
 optf = false;
@@ -383,7 +384,7 @@ tempqoi = G;
 %% Plot the results
 q_mnp_t = [q_mnp_time(:,1),q_mnp_time];
 [RR,TT] = meshgrid(r,t);
-figure('Position', [40, 40, 600, 600])
+figure('Position', [40, 40, 800, 600])
 subplot(2,2,1)
 plot((1:length(HVector))*dt,HVector)
 xlim([0,t(end)])
