@@ -14,9 +14,9 @@ close all
 
 
 %% Variable Setup
-t_end = 180;
-deltat = 3;
-Ntime = t_end/deltat;
+t_end = 180; % [s] End time of the simulation
+deltat = 3; % [s] Delta
+Ntime = t_end/deltat; % [-] Number of time step
 Nspecies = 1
 magneticField = 20* ones(Ntime,1);
 % switch between uniform and Gaussian RV for prior
@@ -27,18 +27,17 @@ else
 end
 
 % debug
-k_t=.527;
-w_t = 0.009;
-rhocp_t = 1045*3600;
-Md = 4.46e5;
+k_t=.527; % [W/m/K] Thermal Conductivity
+w_t = 0.009; % [1/s] Blood perfusion rate
+rhocp_t = 1045*3600; % [J/m^3/K] Density and Specific Heat Production
+Md = 4.46e5; % Domain Magnetization
 
 %%% Time varying Magnetic Field Amplitude Vector Creation
-Hmin = 7957;
-Hmax = 39788;
-H_range = (Hmin:Hmin:Hmax)';
-% Generate random indices
-indices = randi(length(H_range), 1, Ntime);
-% Create the random array
+Hmin = 7957; % [A/m] Minimum value of Magnetic Field the device can generate
+Hmax = 39788; % [A/m] Maximum value of Magnetic Field the device can generate
+H_range = (Hmin:Hmin:Hmax)'; % Possible steps of Magnetic Field on the device
+indices = randi(length(H_range), 1, Ntime); % Generate random indices
+
 Htime = H_range(indices); % Random variation of H in time and constant within each step of "deltat"
 Gain_Variable_H = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
 
@@ -255,16 +254,15 @@ function tempqoi = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
 % k_t = Tissue Thermal Conductivity [W/m/K]
 % w_t = Blood Perfusion Rate [1/s]
 % Qm_t = Metabolic Heat Generation Rate [W/m3]
-% H=Htime(1) % TODO - @mahesh make this time varying
 % H = Applied Magnetic Field [A/m]
 % Md = Domain Magnetization Value of MNP [A/m]
 % Keff = Magnetic Anistropy Constant of MNP [J/m3]
-% deltat = time step [s]
+% deltat = time step in which the H is constant [s]
 Qm_t = 0;                   % [W/m3] Tumor Metabolic Heat
 
 %%% Domain Parameters
 RT = 0.005;               % [m] Radius of the Tumor
-R = 1.1*RT;                 % [m] Radius of the computaional domain
+R = 1.1*RT;               % [m] Radius of the computaional domain
 vol_t = (4*pi*RT^3)/3;    % [m3] Tumor Volume
 dr = RT/50;               % [m] Spatial discretization step size
 r = (0:dr:R)';            % [m] Spatial loactions
@@ -272,19 +270,16 @@ N = length(r);            % [-] Number of spatial nodes
 t_loc = r<=RT;            % [-] Tumor r indices
 
 %%% Time discretization: Implicit method is employed
-dt = 1;
+dt = 1; % time-step for forward runs
 t = 0:size(Htime,1)*deltat;     % Discrete times
 TS = length(t);     % Number of time steps
 
-%%% Assigning the stepped H at each time in the steps.
+%%% Assigning the PieceWise Stepped H in deltat at respective times at dt resolution
 for i = 1: length(Htime)
-    % Calculate the starting index for the current iteration
-    startIndex = (i - 1) * (deltat)/dt + 1;
-    % Calculate the ending index for the current iteration
-    endIndex = min(startIndex + (deltat)/dt - 1, TS-1);
-    HVector(startIndex:endIndex) = Htime(i);   
+    startIndex = (i - 1) * (deltat)/dt + 1; % Calculate the starting index for the current iteration
+    endIndex = min(startIndex + (deltat)/dt - 1, TS-1); % Calculate the ending index for the current iteration
+    HVector(startIndex:endIndex) = Htime(i); % Amplitude vector in time at a resolution of dt assigned from deltat resolution  
 end
-
 
 %%% Ambient Conditions
 htc = 10;
@@ -354,7 +349,7 @@ for i = 1:N
 end
 %%% Solver Time Iterations
 for n = 2:TS
-    H = HVector(n-1);
+    H = HVector(n-1); %
     zeta = mu0*Md*H*MNP_svol/(kB*T_bK);                 % [-] Langevin parameter
     X_i = mu0*(Md^2)*MNP_vol_frac*MNP_svol/(3*kB*T_bK); % [-] Initial Magnetic Susceptibility
     X_0 = 3*X_i*(coth(zeta)-1/zeta)/zeta;               % [-] Equilibrium Magnetic Susceptibility
