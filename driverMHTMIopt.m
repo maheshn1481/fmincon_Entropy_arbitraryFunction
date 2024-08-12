@@ -39,21 +39,22 @@ H_range = (Hmin:Hmin:Hmax)'; % Possible steps of Magnetic Field on the device
 indices = randi(length(H_range), 1, Ntime); % Generate random indices
 
 Htime = H_range(indices); % Random variation of H in time and constant within each step of "deltat"
-Gain_Variable_H = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
+Gain_Variable_H = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat);
 
 
 Htime = 10000*ones(Ntime,1); % Constant H in time
 tic
-Gain_H_10000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
+Gain_H_10000 = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat);
 toc
 
 FDHtime = Htime;
-deltaH = 10000;
+deltaH = 100;
 FDHtime(10) = FDHtime(10)+deltaH; 
 
-Gain_H_10000FD = pennesmht(k_t,w_t,rhocp_t,Md,FDHtime,deltat)
+Gain_H_10000FD = MIGHQuadMHT(FDHtime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat);
 
 % @mahesh why is this FD gradient so small ? can you debug ? 
+(Gain_H_10000FD  -Gain_H_10000  )
 (Gain_H_10000FD  -Gain_H_10000  )/deltaH
 
 %% optimize MI
