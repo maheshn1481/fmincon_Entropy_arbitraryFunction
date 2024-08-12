@@ -191,7 +191,7 @@ function MIobjfun =MIGHQuadMHT(hOpt,NGauss,NumberUncertain,Nspecies,Ntime,GaussL
     mdub   = [ 500000 ];      % s
 
     %% signal uncertianty
-    signu = sqrt(2* Ntime) * 10;
+    signu = sqrt(2* Ntime) * .1;
     [x2,xn2,xm2,w2,wn2]=GaussHermiteNDGauss(NGauss,0,signu);
     lqp2=length(xn2{1}(:));
 
