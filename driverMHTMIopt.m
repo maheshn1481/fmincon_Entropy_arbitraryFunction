@@ -1,8 +1,9 @@
 clear all
 clc
 
-myoptions.Algorithm = 'constDirect'
+%myoptions.Algorithm = 'constDirect'
 %myoptions = optimoptions(@fmincon,'Display','iter-detailed','SpecifyObjectiveGradient',true,'SpecifyConstraintGradient',true,'MaxFunctionEvaluations',1e7,'ConstraintTolerance',2.e-9, 'OptimalityTolerance',2.5e-4,'Algorithm','interior-point','StepTolerance',1.000000e-12,'MaxIterations',1000,'PlotFcn',{'optimplotfvalconstr', 'optimplotconstrviolation', 'optimplotfirstorderopt' },'HonorBounds',true, 'Diagnostic','on','FunValCheck','on' )
+myoptions = optimoptions(@fmincon,'Display','iter-detailed','MaxFunctionEvaluations',1e7,'ConstraintTolerance',2.e-9, 'OptimalityTolerance',2.5e-4,'StepTolerance',1.000000e-12,'MaxIterations',1000,'PlotFcn',{'optimplotfvalconstr', 'optimplotconstrviolation', 'optimplotfirstorderopt' },'HonorBounds',true, 'Diagnostic','on','FunValCheck','on' )
 
 %% % monitor memory: while [ -e /proc/3291925 ] ; do  top -b -n 1 -p 3291925 >>process.txt ;sleep 60; done
 
@@ -18,7 +19,6 @@ t_end = 180; % [s] End time of the simulation
 deltat = 3; % [s] Delta
 Ntime = t_end/deltat; % [-] Number of time step
 Nspecies = 1
-magneticField = 20* ones(Ntime,1);
 % switch between uniform and Gaussian RV for prior
 if(GaussLegendre)
     QuadratureRule = 'Legendre';
@@ -53,7 +53,7 @@ Gain_H_15000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
 Htime = 20000*ones(Ntime,1); % Constant H in time
 Gain_H_20000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
 %% optimize MI
-optf = false;
+optf = true;
 if optf
 
     tic;
@@ -77,7 +77,7 @@ if optf
     % solve
     switch (myoptions.Algorithm)
         case('constDirect')
-            powergrid = [0:1:35];
+            powergrid = [0:1000:40000];
             brutesearch= zeros(size(powergrid ));
             backspaces = '';
             for iii = 1:length(powergrid(:))
@@ -87,7 +87,7 @@ if optf
                 perc_str = sprintf('completed %3.1f', percentage);
                 fprintf([backspaces, perc_str]);
                 backspaces = repmat(sprintf('\b'), 1, length(perc_str));
-                constH = powergrid(iii)* ones(Ntime,1);
+                constH = powergrid(iii)*  ones(Ntime,1);
                 brutesearch(iii) = MIGHQuadMHT(constH,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat);
             end
             save(sprintf('brutesearchNG%dNu%d%s%sSNR%02d%s.mat',NGauss,NumberUncertain,myoptions.Algorithm,ObjectiveType,modelSNR,QuadratureRule) ,'brutesearch','powergrid')
@@ -106,18 +106,18 @@ if optf
             %text(pyrgrid(idmin)+1,lacgrid(idmin)+1, sprintf('opt %d %d', pyrgrid(idmin), lacgrid(idmin)));
             %text(pyrgrid(idmax)+1,lacgrid(idmax)+1, 'control');
         otherwise
-            InitialGuess =  [flips(:)];
-            pmin =  [flips(:)*0];
-            pmax =  [flips(:)*0+35*pi/180];
+            InitialGuess = Htime;
+            pmin =  [Htime(:)*0];
+            pmax =  [Htime(:)*0+40000];
             tolx=1.e-9;
             tolfun=5.e-4;
             maxiter=400;
 
             % truthconstraint = infeasibility(stateconstraint,x0);
             %[popt,fval,exitflag,output] = solve(convprob,x0,'Options',myoptions, 'ConstraintDerivative', 'auto-reverse', 'ObjectiveDerivative', 'auto-reverse' )
-            %% Fx = @(x) MIGHQuadMHT(x, problem, myidx,Nspecies,Ntime,auxvariable);
-            %% [designopt,fval,exitflag,output,lambda,grad,hessian] ...
-            %%     =fmincon(Fx, InitialGuess ,[],[],[],[],pmin,pmax,[],myoptions);
+            Fx = @(x) MIGHQuadMHT(x,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat);
+            [designopt,fval,exitflag,output,lambda,grad,hessian] ...
+                =fmincon(Fx, InitialGuess ,[],[],[],[],pmin,pmax,[],myoptions);
 
             %% handle = figure(5)
             %% optparams.FaList = reshape(designopt(:),size(params.FaList ));
@@ -196,7 +196,7 @@ function MIobjfun =MIGHQuadMHT(hOpt,NGauss,NumberUncertain,Nspecies,Ntime,GaussL
     else
         QuadratureRule = 'Hermite';
     end
-    disp('evaluate quadrature points')
+    %disp('evaluate quadrature points')
     switch (NumberUncertain)
         case(1)
             if(GaussLegendre)
@@ -229,7 +229,7 @@ function MIobjfun =MIGHQuadMHT(hOpt,NGauss,NumberUncertain,Nspecies,Ntime,GaussL
             end
     end
 
-    disp('build objective function')
+    %disp('build objective function')
     expandvar  = ones(1,lqp);
 
     switch (ObjectiveType)
@@ -376,56 +376,56 @@ end
 T_sum_time = sum(T,2);      % Summation of Temperature over all Times at each r location
 G = trapz(r, T_sum_time);     % Integration of Temperature over the domain in 3D
 tempqoi = G;
-%% Plot the results
-q_mnp_t = [q_mnp_time(:,1),q_mnp_time];
-[RR,TT] = meshgrid(r,t);
-figure('Position', [40, 40, 800, 600])
-subplot(2,2,1)
-plot((1:length(HVector))*dt,HVector)
-xlim([0,t(end)])
-xticks([0:t(end)/4:t(end)]);
-xlabel('Time [s]')
-ylabel('H Amplitude, [A/m]');
-title('Magnetic Field');
-
-subplot(2,2,2)
-surf(RR,TT,q_mnp_t')
-xlabel('Radial Distance [m]')
-ylabel('Time [s]');
-zlabel('Qmnp [W/m^3]');
-title('Spatio-Temporal Heat Source');
-xlim([0,R])
-xticks([0,RT/2,RT,R]);
-ylim([0,t(end)])
-yticks([0:t(end)/4:t(end)]);
-grid on;
-
-subplot(2,2,3)
-plot_radius = [0,RT,R];
-legend_String = string(plot_radius)+[" m Tumor Center"," m Tumor Edge"," m Outer Boundary"];
-plot_rad_idx = (plot_radius/dr)+1;
-plot(t,T(plot_rad_idx,:), 'LineWidth',2)
-xlabel('Time, t [s]');
-ylabel('Temperature, T [°C]');
-xlim([0,t(end)])
-xticks([0:t(end)/4:t(end)]);
-legend(legend_String, Location='best')
-title('Temperature Elevations');
-grid on;
-
-subplot(2,2,4)
-plot_time = [60,120,t(end)];
-legend_String = string(plot_time)+[" s"," s"," s"];
-plot_ind = (plot_time/dt)+1;
-plot(r,T(:,plot_ind),'LineWidth',2)
-hold on
-xlabel('Radial distance, r [m]');
-xlim([0,R])
-xticks(0:R/5:R);
-ylabel('Temperature, T [°C]');
-legend(legend_String, Location='best')
-title('Spatial Temperature profile');
-grid on;
+%% j%% Plot the results
+%% jq_mnp_t = [q_mnp_time(:,1),q_mnp_time];
+%% j[RR,TT] = meshgrid(r,t);
+%% jfigure('Position', [40, 40, 800, 600])
+%% jsubplot(2,2,1)
+%% jplot((1:length(HVector))*dt,HVector)
+%% jxlim([0,t(end)])
+%% jxticks([0:t(end)/4:t(end)]);
+%% jxlabel('Time [s]')
+%% jylabel('H Amplitude, [A/m]');
+%% jtitle('Magnetic Field');
+%% j
+%% jsubplot(2,2,2)
+%% jsurf(RR,TT,q_mnp_t')
+%% jxlabel('Radial Distance [m]')
+%% jylabel('Time [s]');
+%% jzlabel('Qmnp [W/m^3]');
+%% jtitle('Spatio-Temporal Heat Source');
+%% jxlim([0,R])
+%% jxticks([0,RT/2,RT,R]);
+%% jylim([0,t(end)])
+%% jyticks([0:t(end)/4:t(end)]);
+%% jgrid on;
+%% j
+%% jsubplot(2,2,3)
+%% jplot_radius = [0,RT,R];
+%% jlegend_String = string(plot_radius)+[" m Tumor Center"," m Tumor Edge"," m Outer Boundary"];
+%% jplot_rad_idx = (plot_radius/dr)+1;
+%% jplot(t,T(plot_rad_idx,:), 'LineWidth',2)
+%% jxlabel('Time, t [s]');
+%% jylabel('Temperature, T [°C]');
+%% jxlim([0,t(end)])
+%% jxticks([0:t(end)/4:t(end)]);
+%% jlegend(legend_String, Location='best')
+%% jtitle('Temperature Elevations');
+%% jgrid on;
+%% j
+%% jsubplot(2,2,4)
+%% jplot_time = [60,120,t(end)];
+%% jlegend_String = string(plot_time)+[" s"," s"," s"];
+%% jplot_ind = (plot_time/dt)+1;
+%% jplot(r,T(:,plot_ind),'LineWidth',2)
+%% jhold on
+%% jxlabel('Radial distance, r [m]');
+%% jxlim([0,R])
+%% jxticks(0:R/5:R);
+%% jylabel('Temperature, T [°C]');
+%% jlegend(legend_String, Location='best')
+%% jtitle('Spatial Temperature profile');
+%% jgrid on;
 
 %% Tri-Diagonal Matrix Alogorithm for Linear System of Equation Solver
     function x = thomas_algorithm(Lower, Main, Upper, Force)
