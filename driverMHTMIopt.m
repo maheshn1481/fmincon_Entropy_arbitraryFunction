@@ -3,7 +3,7 @@ clc
 
 %myoptions.Algorithm = 'constDirect'
 %myoptions = optimoptions(@fmincon,'Display','iter-detailed','SpecifyObjectiveGradient',true,'SpecifyConstraintGradient',true,'MaxFunctionEvaluations',1e7,'ConstraintTolerance',2.e-9, 'OptimalityTolerance',2.5e-4,'Algorithm','interior-point','StepTolerance',1.000000e-12,'MaxIterations',1000,'PlotFcn',{'optimplotfvalconstr', 'optimplotconstrviolation', 'optimplotfirstorderopt' },'HonorBounds',true, 'Diagnostic','on','FunValCheck','on' )
-myoptions = optimoptions(@fmincon,'Display','iter-detailed','MaxFunctionEvaluations',1e7,'ConstraintTolerance',2.e-9, 'OptimalityTolerance',2.5e-4,'StepTolerance',1.000000e-12,'MaxIterations',1000,'PlotFcn',{'optimplotfvalconstr', 'optimplotconstrviolation', 'optimplotfirstorderopt' },'HonorBounds',true, 'Diagnostic','on','FunValCheck','on' )
+myoptions = optimoptions(@fmincon,'Display','iter-detailed','MaxFunctionEvaluations',1e7,'ConstraintTolerance',2.e-9, 'OptimalityTolerance',2.5e-4,'Algorithm','sqp','StepTolerance',1.000000e-12,'MaxIterations',1000,'PlotFcn',{'optimplotfvalconstr', 'optimplotconstrviolation', 'optimplotfirstorderopt' },'HonorBounds',true, 'Diagnostic','on','FunValCheck','on','FiniteDifferenceStepSize',1 )
 
 %% % monitor memory: while [ -e /proc/3291925 ] ; do  top -b -n 1 -p 3291925 >>process.txt ;sleep 60; done
 
@@ -41,19 +41,23 @@ indices = randi(length(H_range), 1, Ntime); % Generate random indices
 Htime = H_range(indices); % Random variation of H in time and constant within each step of "deltat"
 Gain_Variable_H = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
 
-Htime = 5000*ones(Ntime,1); % Constant H in time
-Gain_H_5000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
 
 Htime = 10000*ones(Ntime,1); % Constant H in time
+tic
 Gain_H_10000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
+toc
 
-Htime = 15000*ones(Ntime,1); % Constant H in time
-Gain_H_15000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
+FDHtime = Htime;
+deltaH = 10000;
+FDHtime(10) = FDHtime(10)+deltaH; 
 
-Htime = 20000*ones(Ntime,1); % Constant H in time
-Gain_H_20000 = pennesmht(k_t,w_t,rhocp_t,Md,Htime,deltat)
+Gain_H_10000FD = pennesmht(k_t,w_t,rhocp_t,Md,FDHtime,deltat)
+
+% @mahesh why is this FD gradient so small ? can you debug ? 
+(Gain_H_10000FD  -Gain_H_10000  )/deltaH
+
 %% optimize MI
-optf = true;
+optf = false;
 if optf
 
     tic;
@@ -106,7 +110,7 @@ if optf
             %text(pyrgrid(idmin)+1,lacgrid(idmin)+1, sprintf('opt %d %d', pyrgrid(idmin), lacgrid(idmin)));
             %text(pyrgrid(idmax)+1,lacgrid(idmax)+1, 'control');
         otherwise
-            InitialGuess = Htime;
+            InitialGuess = 10000*rand(Ntime,1); 
             pmin =  [Htime(:)*0];
             pmax =  [Htime(:)*0+40000];
             tolx=1.e-9;
@@ -119,7 +123,7 @@ if optf
             [designopt,fval,exitflag,output,lambda,grad,hessian] ...
                 =fmincon(Fx, InitialGuess ,[],[],[],[],pmin,pmax,[],myoptions);
 
-            %% handle = figure(5)
+            handle = figure(5)
             %% optparams.FaList = reshape(designopt(:),size(params.FaList ));
             %% refparams.FaList = reshape(designopt(:),size(params.FaList ));
             %% popt.FaList      = reshape(designopt(:),size(params.FaList ));
