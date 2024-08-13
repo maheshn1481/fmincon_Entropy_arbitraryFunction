@@ -27,10 +27,10 @@ else
 end
 
 % debug
-k_t=.527; % [W/m/K] Thermal Conductivity
-w_t = 0.009; % [1/s] Blood perfusion rate
-rhocp_t = 1045*3600; % [J/m^3/K] Density and Specific Heat Production
-Md = 4.46e5; % Domain Magnetization
+k_t=.4947; % [W/m/K] Thermal Conductivity
+w_t = 0.0048; % [1/s] Blood perfusion rate
+rhocp_t = 3557545; % [J/m^3/K] Density and Specific Heat Production
+Md = 4.46e5; % [A/m] Domain Magnetization
 
 %%% Time varying Magnetic Field Amplitude Vector Creation
 Hmin = 7957; % [A/m] Minimum value of Magnetic Field the device can generate
@@ -170,25 +170,25 @@ end
 % evaluate MI
 function MIobjfun =MIGHQuadMHT(hOpt,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)
     %% Thermal conductivity 
-    kmean = [ .5 ]; % s
-    kstdd = [ .2 ]; % s
-    klb   = [ 0.1  ]; % s
-    kub   = [ 0.8 ]; % s
+    kmean = [ 0.4947 ]; % [W/m/K]
+    kstdd = [ 0.0639 ]; % [W/m/K]
+    klb   = [ 0.3000 ]; % [W/m/K]
+    kub   = [ 0.5700 ]; % [W/m/K]
     %% perfusion 
-    wmean = [ 0.006  ]; % s
-    wstdd = [ 0.003  ]; % s
-    wlb   = [ 0.002  ]; % s
-    wub   = [ 0.010 ]; % s
+    wmean = [ 0.0048 ]; % [1/s]
+    wstdd = [ 0.0054 ]; % [1/s]
+    wlb   = [ 0.0001 ]; % [1/s]
+    wub   = [ 0.0180 ]; % [1/s]
     %% rho * specific heat 
-    crhomean = [ 3762000 ];       % s
-    crhostdd = [ 100000 ];       % s
-    crholb   = [ 3600000 ];       % s
-    crhoub   = [ 4000000 ];       % s
+    crhomean = [ 3557545 ];       % [J/m^3/K]
+    crhostdd = [ 589716 ];       % [J/m^3/K]
+    crholb   = [ 1531084 ];       % [J/m^3/K]
+    crhoub   = [ 4056000 ];       % [J/m^3/K]
     %% domain magnetization 
-    mdmean = [ 446000 ];      % s
-    mdstdd = [ 100000  ];      % s
-    mdlb   = [ 200000 ];      % s
-    mdub   = [ 500000 ];      % s
+    mdmean = [ 446000 ];      % [A/m]
+    mdstdd = [ 100000 ];      % [A/m]
+    mdlb   = [ 200000 ];      % [A/m]
+    mdub   = [ 500000 ];      % [A/m]
 
     %% signal uncertianty
     signu = sqrt(2* Ntime) * .1;
