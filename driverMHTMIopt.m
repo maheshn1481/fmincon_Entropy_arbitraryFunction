@@ -3,7 +3,7 @@ clc
 
 %myoptions.Algorithm = 'constDirect'
 %myoptions = optimoptions(@fmincon,'Display','iter-detailed','SpecifyObjectiveGradient',true,'SpecifyConstraintGradient',true,'MaxFunctionEvaluations',1e7,'ConstraintTolerance',2.e-9, 'OptimalityTolerance',2.5e-4,'Algorithm','interior-point','StepTolerance',1.000000e-12,'MaxIterations',1000,'PlotFcn',{'optimplotfvalconstr', 'optimplotconstrviolation', 'optimplotfirstorderopt' },'HonorBounds',true, 'Diagnostic','on','FunValCheck','on' )
-myoptions = optimoptions(@fmincon,'Display','iter-detailed','MaxFunctionEvaluations',1e7,'ConstraintTolerance',2.e-9, 'OptimalityTolerance',2.5e-4,'Algorithm','sqp','StepTolerance',1.000000e-12,'MaxIterations',1000,'PlotFcn',{'optimplotfvalconstr', 'optimplotconstrviolation', 'optimplotfirstorderopt' },'HonorBounds',true, 'Diagnostic','on','FunValCheck','on','FiniteDifferenceStepSize',1 )
+myoptions = optimoptions(@fmincon,'Display','iter-detailed','MaxFunctionEvaluations',1e7,'ConstraintTolerance',2.e-9, 'OptimalityTolerance',2.5e-20,'Algorithm','sqp','StepTolerance',1.000000e-12,'MaxIterations',1000,'PlotFcn',{'optimplotfvalconstr', 'optimplotconstrviolation', 'optimplotfirstorderopt' },'HonorBounds',true, 'Diagnostic','on','FunValCheck','on','FiniteDifferenceStepSize',1 )
 
 %% % monitor memory: while [ -e /proc/3291925 ] ; do  top -b -n 1 -p 3291925 >>process.txt ;sleep 60; done
 
@@ -58,7 +58,7 @@ Gain_H_10000FD = MIGHQuadMHT(FDHtime,NGauss,NumberUncertain,Nspecies,Ntime,Gauss
 (Gain_H_10000FD  -Gain_H_10000  )/deltaH
 
 %% optimize MI
-optf = false;
+optf = true;
 if optf
 
     tic;
