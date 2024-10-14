@@ -28,12 +28,11 @@ InitialGuess(:,7) = H_range(indices); % 1. Random variation of H bounded by the 
 [H_var_steps,] = H_variation_between_H_AND_0(Ntime);
 InitialGuess(:,8) = 7600*H_var_steps;   % Rob's group H variation Peak amplitude was 7600 [A/m] with 50% duty cycle (60s On and 60s Off)
 
-for i = 8%1:size(InitialGuess,2)
+for i = 1:size(InitialGuess,2)
 
     Htime = InitialGuess(:,i); % Constant H in time
 
-    for j = 1%:size(data,1)
-
+    for j = round(size(data,1)/2)%1:size(data,1)
         Qm_t = 0;                   % [W/m3] Tumor Metabolic Heat
         k_t=data(j,1); % [W/m/K] Thermal Conductivity
         w_t = data(j,2); % [1/s] Blood perfusion rate

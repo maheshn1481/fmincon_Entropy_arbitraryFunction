@@ -84,7 +84,7 @@ alpha_CF = 0.55;            % [-] Correction Factor for MNP Heating in MF and Ti
 %%% SAR Calculations
 gamma = Km*mnp_svol/(kB*T_bK);                    % [-] An intermediate parameters used in further calculations
 tauB = (3*mu_cf*mnp_hvol)/(kB*T_bK);                % [s] Brownian Relaxation Time of MNP
-tauN = tau0*exp(gamma);    % [s] Neel Relaxation Time of MNP
+tauN = tau0*(sqrt(pi)/2)*(1/sqrt(gamma))*exp(gamma);    % [s] Neel Relaxation Time of MNP
 % if isinf(tauN)
 %     error(['tauN is infinity and gamma = ', num2str(gamma)])
 % end
@@ -115,6 +115,7 @@ for n = 2:TS
     H = HVector(n-1); %
     if H == 0
         SAR = 0;
+        SAR_grams = SAR/1000;                              % [W/g] MNP Specific Absorption Rate
     else
         zeta = mu0*Md*H*mnp_svol/(kB*T_bK);                 % [-] Langevin parameter
         X_i = mu0*(Md^2)*mnp_vol_frac*mnp_svol/(3*kB*T_bK); % [-] Initial Magnetic Susceptibility
@@ -125,10 +126,10 @@ for n = 2:TS
         SAR_grams = SAR/1000;                              % [W/g] MNP Specific Absorption Rate
     end
     %%% Heat Source by MNP in Tumor
-    MNP_conc = mnp_mass_kg/vol_t;      % [kg/m3] Concentration of MNP in Tumor, Assuming MNPs are distributed uniformly and confined within the tumor only
-    % MNP_conc = 4;
+    % MNP_conc = mnp_mass_kg/vol_t;      % [kg/m3] Concentration of MNP in Tumor, Assuming MNPs are distributed uniformly and confined within the tumor only
+    MNP_conc = 4;
     Q_MNP = alpha_CF*MNP_conc*SAR;  % [W/m3] Heat Generation by MNP in Tissue
-
+    SARtime(1,n-1) = SAR_grams;
     %%% Assign Q_MNP to the center region only
     q_mnp = Q_MNP*t_loc;        % MNP heat generation [W/m^3] On/Off Pulsating with time
     q_mnp_time(:,n-1) = q_mnp;
@@ -154,29 +155,35 @@ tempqoi = total_integral;
 q_mnp_t = [q_mnp_time(:,1),q_mnp_time];
 [RR,TT] = meshgrid(r,t);
 close all
-fig1 = figure('Position', [40, 40, 800, 600]);
+fig1 = figure('Position', [40, 40, 800, 300]);
 sgtitle([sprintf('k = %.3f, w = %.5f, crho = %d, K = %d, Gain = %.3f',k_t,w_t,rhocp_t,Km,tempqoi)])
-subplot(2,2,1)
-plot((1:length(HVector))*dt,HVector)
+subplot(1,2,1)
+yyaxis left
+plot(t(2:end),HVector)
+ylabel('H Amplitude, [A/m]');
+hold on
+yyaxis right
+plot(t(2:end),SARtime)
+ylabel('SAR, [W/g]');
+hold off
 xlim([0,t(end)])
 xticks([0:t(end)/4:t(end)]);
 xlabel('Time [s]')
-ylabel('H Amplitude, [A/m]');
 title('Magnetic Field');
 
-subplot(2,2,2)
-surf(RR,TT,q_mnp_t')
-xlabel('Radial Distance [m]')
-ylabel('Time [s]');
-zlabel('Qmnp [W/m^3]');
-title('Spatio-Temporal Heat Source');
-xlim([0,R])
-xticks([0,RT/2,RT,R]);
-ylim([0,t(end)])
-yticks([0:t(end)/4:t(end)]);
-grid on;
+% subplot(2,2,2)
+% surf(RR,TT,q_mnp_t')
+% xlabel('Radial Distance [m]')
+% ylabel('Time [s]');
+% zlabel('Qmnp [W/m^3]');
+% title('Spatio-Temporal Heat Source');
+% xlim([0,R])
+% xticks([0,RT/2,RT,R]);
+% ylim([0,t(end)])
+% yticks([0:t(end)/4:t(end)]);
+% grid on;
 
-subplot(2,2,3)
+subplot(1,2,2)
 plot_radius = [0,RT,R];
 legend_String = string(plot_radius)+[" m Tumor Center"," m Tumor Edge"," m Outer Boundary"];
 plot_rad_idx = (plot_radius/dr)+1;
@@ -189,20 +196,20 @@ legend(legend_String, Location='best')
 title('Temperature Elevations');
 grid on;
 
-subplot(2,2,4)
-plot_time = [0,60,120,t(end)];
-legend_String = string(plot_time)+[" s"," s"," s"," s"];
-plot_ind = (plot_time/dt)+1;
-plot(r,T(:,plot_ind),'LineWidth',2)
-xlabel('Radial distance, r [m]');
-xlim([0,R])
-xticks(0:R/5:R);
-ylabel('Temperature, T [°C]');
-legend(legend_String, Location='best')
-title('Spatial Temperature profile');
-grid on;
+% subplot(2,2,4)
+% plot_time = [0,60,120,t(end)];
+% legend_String = string(plot_time)+[" s"," s"," s"," s"];
+% plot_ind = (plot_time/dt)+1;
+% plot(r,T(:,plot_ind),'LineWidth',2)
+% xlabel('Radial distance, r [m]');
+% xlim([0,R])
+% xticks(0:R/5:R);
+% ylabel('Temperature, T [°C]');
+% legend(legend_String, Location='best')
+% title('Spatial Temperature profile');
+% grid on;
 set(findall(gcf, '-property', 'FontName'), 'FontName', 'Times New Roman', 'FontSize', 12);
-savename = [sprintf('Run_%d_IG_%d',Run,IG)]
+savename = [sprintf('Fe_C4_Run_%d_IG_%d',Run,IG)]
 saveas(fig1,savename,'png')
 pause(0.5)
 

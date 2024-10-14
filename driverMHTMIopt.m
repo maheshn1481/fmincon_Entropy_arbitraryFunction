@@ -171,8 +171,8 @@ if optf
             % InitialGuess = H_range(5)*ones(Ntime,1);  IG =6;
             % indices = [3 5 1 2 4 2 3 5 1 3 2 4 5 2 1 4 5 3 1 5 4 2 3 1 5 2 3 1 5 2];
             % InitialGuess = H_range(indices); IG =7; % 1. Random variation of H bounded by the minimum and maximum values
-            % [H_var_steps,] = H_variation_between_H_AND_0(Ntime);
-            % InitialGuess = 7600*H_var_steps; IG =8;   % Rob's group H variation Peak amplitude was 7600 [A/m] with 50% duty cycle (60s On and 60s Off)
+            [H_var_steps,] = H_variation_between_H_AND_0(Ntime);
+            InitialGuess = 7600*H_var_steps; IG =8;   % Rob's group H variation Peak amplitude was 7600 [A/m] with 50% duty cycle (60s On and 60s Off)
 
 
             pmin =  zeros(Ntime,1);
@@ -195,7 +195,7 @@ if optf
     end
     % save convergence history
     set(findall(gcf, '-property', 'FontName'), 'FontName', 'Times New Roman', 'FontSize', 12);
-    savename1 = sprintf('IG%dNU%d_ConvHistory',IG,NumberUncertain)
+    savename1 = sprintf('IG%dNU%d_Fe3O4NP_ConvHistory',IG,NumberUncertain)
     saveas(gcf,savename1,'png')
     % saveas(handle,sprintf('historyNG%dNu%d%s%sSNR%02d%s',NGauss,NumberUncertain,myoptions.Algorithm,ObjectiveType,modelSNR,QuadratureRule ),'png')
     toc;
@@ -254,7 +254,7 @@ xlabel('Time Step Number');
 ylabel('Gradient');
 title('Gradient variation');
 set(findall(gcf, '-property', 'FontName'), 'FontName', 'Times New Roman', 'FontSize', 12);
-savename2 = sprintf('IG%dNU%d_OptH',IG,NumberUncertain)
+savename2 = sprintf('IG%dNU%d_Fe3O4NP_OptH',IG,NumberUncertain)
 saveas(gcf,savename2,'png')
 % Htime =designopt;
 % %%% Time discretization: Implicit method is employed
@@ -443,9 +443,23 @@ T_initial = T_SS;     % [°C] Initial Condition Temperature
 % T_initial = 37;     % [°C] Initial Condition Temperature
 alpha_t = k_t/(rhocp_t); % Tissue Thermal diffusivity [m^2/s]
 f = 1.63e5;    % [Hz] Magnetic Field Frequency f = 163 kHz
+%% These are for Fe nanoparticles
+% %%% Magnetic Nanoparticle Physical and Magnetic Parameters MNP Used: Fe3O4
+% d_mnp = 60e-9;                 % [m] MNP Diameter d = 60 nm
+% delta_l = 0.1*d_mnp;                 % [m] Liquid Layer Thickness on the Hard Solid MNP delta = 1 nm
+% dh_mnp = d_mnp+2*delta_l;       % [m] MNP Hydrodynamic Diameter
+% %%% domain magnetization
+% % Mass specific magnetization of MNPs used in mice experiments is 150 emu/g
+% % conversion of emu/g to [A/m]
+% % 1 emu/g = 1Am2/kg
+% % Am2/kg to A/m obtained by multiplying with density in kg/m3
+% rho_mnp = 7874;        % [kg/m3] MNP Density
+% Md_measured = 150;                  % [emu/g]
+% Md = Md_measured*rho_mnp;         % [A/m] Domain Magnetization
 
+%% These are for Fe3O4 nanoparticles with 4 mg/cm3 tumor concentration
 %%% Magnetic Nanoparticle Physical and Magnetic Parameters MNP Used: Fe3O4
-d_mnp = 60e-9;                 % [m] MNP Diameter d = 60 nm
+d_mnp = 16e-9;                 % [m] MNP Diameter d = 60 nm
 delta_l = 0.1*d_mnp;                 % [m] Liquid Layer Thickness on the Hard Solid MNP delta = 1 nm
 dh_mnp = d_mnp+2*delta_l;       % [m] MNP Hydrodynamic Diameter
 %%% domain magnetization
@@ -453,10 +467,9 @@ dh_mnp = d_mnp+2*delta_l;       % [m] MNP Hydrodynamic Diameter
 % conversion of emu/g to [A/m]
 % 1 emu/g = 1Am2/kg
 % Am2/kg to A/m obtained by multiplying with density in kg/m3
-rho_mnp = 7874;        % [kg/m3] MNP Density
-Md_measured = 150;                  % [emu/g]
-Md = Md_measured*rho_mnp;         % [A/m] Domain Magnetization
-% Md = 446*1000;         % [A/m] Domain Magnetization
+rho_mnp = 5180;        % [kg/m3] MNP Density
+Md = 446*1000;         % [A/m] Domain Magnetization
+
 
 %%% MNP Dose and Magnetic Fluid Parameters
 mnp_mf_conc = 100; % [ug/ml] micrograms of MNP/milliliter of water
@@ -480,7 +493,7 @@ alpha_CF = 0.55;            % [-] Correction Factor for MNP Heating in MF and Ti
 %%% SAR Calculations
 gamma = Km*mnp_svol/(kB*T_bK);                    % [-] An intermediate parameters used in further calculations
 tauB = (3*mu_cf*mnp_hvol)/(kB*T_bK);                % [s] Brownian Relaxation Time of MNP
-tauN = tau0*exp(gamma);    % [s] Neel Relaxation Time of MNP
+tauN = tau0*(sqrt(pi)/2)*(1/sqrt(gamma))*exp(gamma);    % [s] Neel Relaxation Time of MNP
 % if isinf(tauN)
 %     error(['tauN is infinity and gamma = ', num2str(gamma)])
 % end
@@ -520,12 +533,14 @@ for n = 2:TS
         SAR = P/(rho_mnp*mnp_vol_frac);                     % [W/kg] MNP Specific Absorption Rate
         SAR_grams = SAR/1000;                              % [W/g] MNP Specific Absorption Rate
     end
-    %%% Heat Source by MNP in Tumor
-    MNP_conc = mnp_mass_kg/vol_t;      % [kg/m3] Concentration of MNP in Tumor, Assuming MNPs are distributed uniformly and confined within the tumor only
+    % %%% Heat Source by MNP in Tumor
+    % MNP_conc = mnp_mass_kg/vol_t;      % [kg/m3] Concentration of MNP in Tumor, Assuming MNPs are distributed uniformly and confined within the tumor only
+    %%% This is used in previous runs
+    MNP_conc = 4; % 4 mg/cm3 mnp concentration in tumor
     Q_MNP = alpha_CF*MNP_conc*SAR;  % [W/m3] Heat Generation by MNP in Tissue
 
     %%% Assign Q_MNP to the center region only
-    q_mnp = Q_MNP*t_loc;        % MNP heat generation [W/m^3] On/Off Pulsating with time
+    q_mnp = Q_MNP*t_loc;        % MNP heat generation [W/m^3] within the tumor only
     q_mnp_time(:,n-1) = q_mnp;
 
     Force = zeros(N,1); % Force vector

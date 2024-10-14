@@ -1,5 +1,5 @@
 %% Pennes Solver
-function tempqoi = pennesmht_fe3o4(k_t,w_t,rhocp_t,Km,Htime,deltat,IG,Run)
+function tempqoi = pennesmht_fe(k_t,w_t,rhocp_t,Km,Htime,deltat,IG,Run)
 %%% Following are the inputs for the function
 % rhocp_t = Tissue Density [kg/m3] * cp_t = Tissue Specific Heat [J/kg/K]
 % k_t = Tissue Thermal Conductivity [W/m/K]
@@ -49,7 +49,7 @@ alpha_t = k_t/(rhocp_t); % Tissue Thermal diffusivity [m^2/s]
 f = 1.63e5;    % [Hz] Magnetic Field Frequency f = 163 kHz
 
 %%% Magnetic Nanoparticle Physical and Magnetic Parameters MNP Used: Fe3O4
-d_mnp = 16e-9;                 % [m] MNP Diameter d = 60 nm
+d_mnp = 60e-9;                 % [m] MNP Diameter d = 60 nm
 delta_l = 0.1*d_mnp;                 % [m] Liquid Layer Thickness on the Hard Solid MNP delta = 1 nm
 dh_mnp = d_mnp+2*delta_l;       % [m] MNP Hydrodynamic Diameter
 %%% domain magnetization
@@ -57,11 +57,10 @@ dh_mnp = d_mnp+2*delta_l;       % [m] MNP Hydrodynamic Diameter
 % conversion of emu/g to [A/m]
 % 1 emu/g = 1Am2/kg
 % Am2/kg to A/m obtained by multiplying with density in kg/m3
-rho_mnp = 5180;        % [kg/m3] MNP Density
-% Md_measured = 150;                  % [emu/g]
-% Md = Md_measured*rho_mnp;         % [A/m] Domain Magnetization
-Md = 446*1000;         % [A/m] Domain Magnetization
-
+rho_mnp = 7874;        % [kg/m3] MNP Density
+Md_measured = 150;                  % [emu/g]
+Md = Md_measured*rho_mnp;         % [A/m] Domain Magnetization
+% Md = 446*1000;         % [A/m] Domain Magnetization
 
 %%% MNP Dose and Magnetic Fluid Parameters
 mnp_mf_conc = 100; % [ug/ml] micrograms of MNP/milliliter of water
@@ -116,21 +115,21 @@ for n = 2:TS
     H = HVector(n-1); %
     if H == 0
         SAR = 0;
-        SAR_grams = SAR/1000;                              % [W/g] MNP Specific Absorption Rate
-    else
+            else
         zeta = mu0*Md*H*mnp_svol/(kB*T_bK);                 % [-] Langevin parameter
         X_i = mu0*(Md^2)*mnp_vol_frac*mnp_svol/(3*kB*T_bK); % [-] Initial Magnetic Susceptibility
         X_0 = 3*X_i*(coth(zeta)-1/zeta)/zeta;               % [-] Equilibrium Magnetic Susceptibility
         X_L = X_0*omega*tauE/(1+(omega*tauE)^2);            % [-] Loss Component of Magnetic Susceptibility
         P = pi*mu0*f*X_L*H^2;                               % [W/m3] Heat Generation rate of MNPs in MF
         SAR = P/(rho_mnp*mnp_vol_frac);                     % [W/kg] MNP Specific Absorption Rate
+        SARtime(n-1) = SAR;
         SAR_grams = SAR/1000;                              % [W/g] MNP Specific Absorption Rate
     end
     %%% Heat Source by MNP in Tumor
-    % MNP_conc = mnp_mass_kg/vol_t;      % [kg/m3] Concentration of MNP in Tumor, Assuming MNPs are distributed uniformly and confined within the tumor only
-    MNP_conc = 4;
+    MNP_conc = mnp_mass_kg/vol_t;      % [kg/m3] Concentration of MNP in Tumor, Assuming MNPs are distributed uniformly and confined within the tumor only
+    % MNP_conc = 4;
     Q_MNP = alpha_CF*MNP_conc*SAR;  % [W/m3] Heat Generation by MNP in Tissue
-    SARtime(1,n-1) = SAR_grams;
+
     %%% Assign Q_MNP to the center region only
     q_mnp = Q_MNP*t_loc;        % MNP heat generation [W/m^3] On/Off Pulsating with time
     q_mnp_time(:,n-1) = q_mnp;
@@ -165,11 +164,12 @@ ylabel('H Amplitude, [A/m]');
 hold on
 yyaxis right
 plot(t(2:end),SARtime)
-ylabel('SAR, [W/g]');
+ylabel('SAR, [W/kg]');
 hold off
 xlim([0,t(end)])
 xticks([0:t(end)/4:t(end)]);
 xlabel('Time [s]')
+
 title('Magnetic Field');
 
 subplot(2,2,2)
@@ -210,7 +210,7 @@ legend(legend_String, Location='best')
 title('Spatial Temperature profile');
 grid on;
 set(findall(gcf, '-property', 'FontName'), 'FontName', 'Times New Roman', 'FontSize', 12);
-savename = [sprintf('Fe3O4_Run_%d_IG_%d',Run,IG)]
+savename = [sprintf('Fe_Run_%d_IG_%d',Run,IG)]
 saveas(fig1,savename,'png')
 pause(0.5)
 
