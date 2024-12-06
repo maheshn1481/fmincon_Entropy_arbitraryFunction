@@ -1,11 +1,18 @@
 clear
 clc
+set(0, 'DefaultAxesXColor', 'k', ...
+       'DefaultAxesYColor', 'k', ...
+       'DefaultTextColor', 'k');
+% Define the number of workers (processors)
+numWorkers = 10; % Replace 4 with the desired number of processors
+
+% Start a parallel pool with the specified number of workers
+if isempty(gcp('nocreate')) % Check if a parallel pool exists
+    parpool(numWorkers); % Start a parallel pool with the specified number of workers
+end
 
 %myoptions.Algorithm = 'constDirect'
-%myoptions = optimoptions(@fmincon,'Display','iter-detailed','SpecifyObjectiveGradient',true,'SpecifyConstraintGradient',true,'MaxFunctionEvaluations',1e7,'ConstraintTolerance',2.e-9, 'OptimalityTolerance',2.5e-4,'Algorithm','interior-point','StepTolerance',1.000000e-12,'MaxIterations',1000,'PlotFcn',{'optimplotfvalconstr', 'optimplotconstrviolation', 'optimplotfirstorderopt' },'HonorBounds',true, 'Diagnostic','on','FunValCheck','on' )
-myoptions = optimoptions(@fmincon,'Display','iter-detailed','MaxFunctionEvaluations',1e7,'ConstraintTolerance',2.e-9, 'OptimalityTolerance',2.5e-20,'Algorithm','sqp','StepTolerance',1.000000e-12,'MaxIterations',400,'PlotFcn',{'optimplotfvalconstr', 'optimplotconstrviolation', 'optimplotfirstorderopt' },'HonorBounds',true, 'Diagnostic','on','FunValCheck','on','FiniteDifferenceStepSize',1 )
-
-% myoptions = optimoptions(@fmincon,'Display','iter-detailed','MaxFunctionEvaluations',1e7,'ConstraintTolerance',1.e-9, 'OptimalityTolerance',1e-12,'Algorithm','sqp','StepTolerance',1e-12,'MaxIterations',200,'PlotFcn',{'optimplotfvalconstr', 'optimplotconstrviolation', 'optimplotfirstorderopt' },'HonorBounds',true, 'Diagnostic','on','FunValCheck','on','FiniteDifferenceStepSize',1 )
+myoptions = optimoptions(@fmincon,'UseParallel', true, 'Display','iter-detailed','MaxFunctionEvaluations',1e7,'ConstraintTolerance',1e-20, 'OptimalityTolerance',1e-20,'Algorithm','sqp','StepTolerance',1e-20,'MaxIterations',400,'PlotFcn',{@optimplotfvalconstr, @optimplotconstrviolation, @optimplotfirstorderopt },'HonorBounds',true, 'Diagnostic','on','FunValCheck','on','FiniteDifferenceStepSize',1 )
 
 %% % monitor memory: while [ -e /proc/3291925 ] ; do  top -b -n 1 -p 3291925 >>process.txt ;sleep 60; done
 
@@ -35,56 +42,56 @@ rhocp_t = 3589229; % [J/m^3/K] Density and Specific Heat Production
 Km = 31500; % [J/m^3] Anisotropy Constant %% A variable to be recoved from the experiments/data
 
 %%% Time varying Magnetic Field Amplitude Vector Creation
-Hmin = 7957; % [A/m] Minimum value of Magnetic Field the device can generate
-Hmax = 39788; % [A/m] Maximum value of Magnetic Field the device can generate
+Hmin = 8000; % [A/m] Minimum value of Magnetic Field the device can generate
+Hmax = 40000; % [A/m] Maximum value of Magnetic Field the device can generate
 H_range = (Hmin:Hmin:Hmax)'; % Possible steps of Magnetic Field on the device
 
-%%% Calculating initial gain/total signal and the Mutual Information for all the trail initial guesses
-InitialGuess = 0*ones(Ntime,1); IG =1;
-Htime = InitialGuess; % Constant H in time
-eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
-eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
-
-InitialGuess = H_range(1)*ones(Ntime,1);  IG =2;
-Htime = InitialGuess; % Constant H in time
-eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
-eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
-
-InitialGuess = H_range(2)*ones(Ntime,1);  IG =3;
-Htime = InitialGuess; % Constant H in time
-eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
-eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
-
-InitialGuess = H_range(3)*ones(Ntime,1);  IG =4;
-Htime = InitialGuess; % Constant H in time
-eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
-eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
-
-InitialGuess = H_range(4)*ones(Ntime,1);  IG =5;
-Htime = InitialGuess; % Constant H in time
-eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
-eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
-
-InitialGuess = H_range(5)*ones(Ntime,1);  IG =6;
-Htime = InitialGuess; % Constant H in time
-eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
-eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
-
-indices = [3 5 1 2 4 2 3 5 1 3 2 4 5 2 1 4 5 3 1 5 4 2 3 1 5 2 3 1 5 2];
-InitialGuess = H_range(indices); IG =7; % 1. Random variation of H bounded by the minimum and maximum values
-Htime = InitialGuess; % Constant H in time
-eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
-eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
-
-[H_var_steps,] = H_variation_between_H_AND_0(Ntime);
-InitialGuess = 7600*H_var_steps; IG =8;   % Rob's group H variation Peak amplitude was 7600 [A/m] with 50% duty cycle (60s On and 60s Off)
-Htime = InitialGuess; % Constant H in time
-eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
-eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
+% %%% Calculating initial gain/total signal and the Mutual Information for all the trail initial guesses
+% InitialGuess = 0*ones(Ntime,1); IG =1;
+% Htime = InitialGuess; % Constant H in time
+% eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
+% eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
+% 
+% InitialGuess = H_range(1)*ones(Ntime,1);  IG =2;
+% Htime = InitialGuess; % Constant H in time
+% eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
+% eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
+% 
+% InitialGuess = H_range(2)*ones(Ntime,1);  IG =3;
+% Htime = InitialGuess; % Constant H in time
+% eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
+% eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
+% 
+% InitialGuess = H_range(3)*ones(Ntime,1);  IG =4;
+% Htime = InitialGuess; % Constant H in time
+% eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
+% eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
+% 
+% InitialGuess = H_range(4)*ones(Ntime,1);  IG =5;
+% Htime = InitialGuess; % Constant H in time
+% eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
+% eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
+% 
+% InitialGuess = H_range(5)*ones(Ntime,1);  IG =6;
+% Htime = InitialGuess; % Constant H in time
+% eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
+% eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
+% 
+% indices = [3 5 1 2 4 2 3 5 1 3 2 4 5 2 1 4 5 3 1 5 4 2 3 1 5 2 3 1 5 2];
+% InitialGuess = H_range(indices); IG =7; % 1. Random variation of H bounded by the minimum and maximum values
+% Htime = InitialGuess; % Constant H in time
+% eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
+% eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
+% 
+% [H_var_steps,] = H_variation_between_H_AND_0(Ntime);
+% InitialGuess = 7600*H_var_steps; IG =8;   % Rob's group H variation Peak amplitude was 7600 [A/m] with 50% duty cycle (60s On and 60s Off)
+% Htime = InitialGuess; % Constant H in time
+% eval(['Initial_Gain_IG',num2str(IG),' = pennesmht(k_t,w_t,rhocp_t,Km,Htime,deltat)']); % Intial gain = total signal for the IG
+% eval(['MI_IG',num2str(IG),' = MIGHQuadMHT(Htime,NGauss,NumberUncertain,Nspecies,Ntime,GaussLegendre,ObjectiveType,deltat)']); %Initial MI for the IG
 
 
 %% optimize MI
-optf = false;
+optf = true;
 if optf
 
     tic;
@@ -139,20 +146,18 @@ if optf
         otherwise
             %%% These are traial initial guesses and should be used one at a time to find Optimum H
             clear InitialGuess IG
-            % InitialGuess = 0*ones(Ntime,1); IG =1;
-            % InitialGuess = H_range(1)*ones(Ntime,1);  IG =2;
-            % InitialGuess = H_range(2)*ones(Ntime,1);  IG =3;
-            % InitialGuess = H_range(3)*ones(Ntime,1);  IG =4;
-            % InitialGuess = H_range(4)*ones(Ntime,1);  IG =5;
-            % InitialGuess = H_range(5)*ones(Ntime,1);  IG =6;
-            % indices = [3 5 1 2 4 2 3 5 1 3 2 4 5 2 1 4 5 3 1 5 4 2 3 1 5 2 3 1 5 2];
-            % InitialGuess = H_range(indices); IG =7; % 1. Random variation of H bounded by the minimum and maximum values
-            % [H_var_steps,] = H_variation_between_H_AND_0(Ntime);
-            % InitialGuess = 7600*H_var_steps; IG =8;   % Rob's group H variation Peak amplitude was 7600 [A/m] with 50% duty cycle (60s On and 60s Off)
+            % IG =1; InitialGuess = 0*ones(Ntime,1); 
+            % IG =2; InitialGuess = H_range(1)*ones(Ntime,1);  
+            % IG =3; InitialGuess = H_range(2)*ones(Ntime,1);  
+            % IG =4; InitialGuess = H_range(3)*ones(Ntime,1);  
+            % IG =5; InitialGuess = H_range(4)*ones(Ntime,1);  
+            % IG =6; InitialGuess = H_range(5)*ones(Ntime,1);  
+            % IG =7; indices = [3 5 1 2 4 2 3 5 1 3 2 4 5 2 1 4 5 3 1 5 4 2 3 1 5 2 3 1 5 2]; InitialGuess = H_range(indices);  % 1. Random variation of H bounded by the minimum and maximum values
+            IG =8; [H_var_steps,] = H_variation_between_H_AND_0(Ntime); InitialGuess = 7600*H_var_steps;    % Rob's group H variation Peak amplitude was 7600 [A/m] with 50% duty cycle (60s On and 60s Off)
 
 
             pmin =  zeros(Ntime,1);
-            pmax =  40000*ones(Ntime,1);
+            pmax =  50000*ones(Ntime,1);
             tolx=1.e-9;
             tolfun=5.e-4;
             maxiter=400;
@@ -173,6 +178,7 @@ if optf
     set(findall(gcf, '-property', 'FontName'), 'FontName', 'Times New Roman', 'FontSize', 12);
     savename1 = sprintf('IG%dNU%d_Fe3O4NP_ConvHistory',IG,NumberUncertain)
     saveas(gcf,savename1,'png')
+    saveas(gcf,savename1,'fig')
     % saveas(handle,sprintf('historyNG%dNu%d%s%sSNR%02d%s',NGauss,NumberUncertain,myoptions.Algorithm,ObjectiveType,modelSNR,QuadratureRule ),'png')
     toc;
 
@@ -207,29 +213,39 @@ if optf
     %% set(gca,'FontSize',16)
     %% saveas(handle,sprintf('OptMzNG%dNu%d%s%sSNR%02d%s',NGauss,NumberUncertain,myoptions.Algorithm,ObjectiveType,modelSNR,QuadratureRule),'png')
     %% plot initial and optimum H Vecotr
-    figure('Position',[50,50,1000,400])
-    subplot(1,2,1)
+
+    figure('Position',[50,50,400,275])
+    % subplot(1,2,1)
     steps = (1:1:Ntime)';
     stairs(InitialGuess,'r', 'LineWidth', 2);  % Using stairs for a more accurate representation
     hold on
     stairs(designopt, ':ob','LineWidth', 2);  % Using stairs for a more accurate representation
     hold off
-    legend('Initial Guess', 'Optimized',Location='best')
-    title('Initial and Optimum H variation');
+    legend('Initial guess', 'Optimized',Location='best')
+    % title('Initial and Optimum H variation');
     xlabel('Time Step Number');
-    ylabel('H Variation');
-    % ylim([-0.1, 1.1]);  % Set y-axis limits for better visibility
-    % xlim([1, Ntime]);   % Set x-axis limits, starting from 1
+    ylabel('Magnetic field amplitude, (A/m) ');
+    ylim([0, 50000]);  % Set y-axis limits for better visibility
+    xlim([0, Ntime]);   % Set x-axis limits, starting from 1
     grid on;
-    % figure()
-    subplot(1,2,2)
-    stairs(grad,'r', 'LineWidth', 2);  % Using stairs for a more accurate representation
-    xlabel('Time Step Number');
-    ylabel('Gradient');
-    title('Gradient variation');
     set(findall(gcf, '-property', 'FontName'), 'FontName', 'Times New Roman', 'FontSize', 12);
     savename2 = sprintf('IG%dNU%d_Fe3O4NP_OptH',IG,NumberUncertain)
     saveas(gcf,savename2,'png')
+    saveas(gcf,savename2,'fig')
+    
+    figure('Position',[50,50,400,275])
+    % subplot(1,2,2)
+    stairs(grad,'r', 'LineWidth', 2);  % Using stairs for a more accurate representation
+    xlabel('Time Step Number');
+    ylabel('Gradient');
+    % title('Gradient variation');
+    cyl = ylim;
+    ylim([cyl(1),0]);  % Set y-axis limits for better visibility
+    xlim([0, Ntime]);   % Set x-axis limits, starting from 1
+    set(findall(gcf, '-property', 'FontName'), 'FontName', 'Times New Roman', 'FontSize', 12);
+    savename3 = sprintf('IG%dNU%d_Fe3O4NP_Grad',IG,NumberUncertain)
+    saveas(gcf,savename3,'png')
+    saveas(gcf,savename3,'fig')
     % Htime =designopt;
     % %%% Time discretization: Implicit method is employed
     % dt = 1; % time-step used in for forward runs
@@ -292,18 +308,29 @@ end
 %disp('evaluate quadrature points')
 switch (NumberUncertain)
     case(1)
+        %%% uncertain variable is K anisotropy constant
         if(GaussLegendre)
             [x,xn,xm,w,wn]=GaussLegendreNDGauss(NGauss,kmlb,kmub);
         else
             [x,xn,xm,w,wn]=GaussHermiteNDGauss(NGauss,kmmean,kmstdd);
         end
         kmqp   = xn{1}(:);
+
+        % %%% uncertain variable is w blood perfusion rate
+        % if(GaussLegendre)
+        %     [x,xn,xm,w,wn]=GaussLegendreNDGauss(NGauss,wlb,wub);
+        % else
+        %     [x,xn,xm,w,wn]=GaussHermiteNDGauss(NGauss,wmean,wstdd);
+        % end
+        % wqp   = xn{1}(:);
+
         % evaluate function at each quadrature point
         lqp=length(xn{1}(:));
         sumstatevariable      = zeros(Nspecies,lqp);
         for iqp = 1:lqp
             sumstatevariable(1,iqp) =  pennesmht(kmean,wmean,crhomean,kmqp(iqp),hOpt,deltat);
-            % sumstatevariable(1,iqp) =  pennesmht_debug(kmean,wmean,crhomean,kmqp(iqp),hOpt,deltat);
+            % sumstatevariable(1,iqp) =  pennesmht(kmean,wqp(iqp),crhomean,kmmean,hOpt,deltat);
+
         end
     case(4)
         if(GaussLegendre)
@@ -330,7 +357,7 @@ switch (ObjectiveType)
         diffsumm =sumstatevariable(1,:)' * expandvar   - expandvar' * sumstatevariable(1,:);
         negHz = 0;
         for jjj=1:lqp2
-            znu=xn2{1}(jjj) ;
+            znu=xn2{1}(jjj);
             % note that the sqrt(pi)^N+1  and 2^N factors from the integration over priors is included in the quadrature routines.
             % this makes is easier to switch between Gaussian and Uniform RV
             negHz = negHz + wn2(jjj) * (wn(:)' * log(exp(-(znu + diffsumm).^2/2/signu^2 - log(signu) -log(2*pi)/2) * wn(:)));
@@ -341,6 +368,9 @@ end
 MIobjfun = negHz;
 % MIobjfun = [kmqp',sumstatevariable,negHz];
 end
+
+
+
 %% Rob's Group H variation
 function [rob_group_H,steps] = H_variation_between_H_AND_0(Ntime)
 % Generate x values with a frequency of 1, starting from 1
@@ -348,7 +378,7 @@ steps = 1:1:Ntime;
 
 % Calculate y values using the modified rectangle_wave function
 rob_group_H = rectangle_wave(steps);
-%% Plot H variation
+% Plot H variation
 % figure;
 % stairs(steps, rob_group_H, 'LineWidth', 2);  % Using stairs for a more accurate representation
 % title('Rectangle Wave (Cycle Time = 2, Frequency = 1)');
@@ -419,24 +449,11 @@ T_SS = steady_state_temperature(T_b, htc, T_amb, Qm_t, rho_b, cp_b, w_t, k_t, r)
 T_initial = T_SS;     % [°C] Initial Condition Temperature
 % T_initial = 37;     % [°C] Initial Condition Temperature
 alpha_t = k_t/(rhocp_t); % Tissue Thermal diffusivity [m^2/s]
-f = 1.63e5;    % [Hz] Magnetic Field Frequency f = 163 kHz
-%% This section has particle magnetic and physical properties for Fe nanoparticles being used in in-vivo experiments 
-%%% Magnetic Nanoparticle Physical and Magnetic Parameters MNP Used: Fe3O4
-d_mnp = 60e-9;                 % [m] MNP Diameter d = 60 nm
-delta_l = 0.1*d_mnp;                 % [m] Liquid Layer Thickness on the Hard Solid MNP delta = 1 nm
-dh_mnp = d_mnp+2*delta_l;       % [m] MNP Hydrodynamic Diameter
-%%% domain magnetization
-% Mass specific magnetization of MNPs used in mice experiments is 150 emu/g
-% conversion of emu/g to [A/m]
-% 1 emu/g = 1Am2/kg
-% Am2/kg to A/m obtained by multiplying with density in kg/m3
-rho_mnp = 7874;        % [kg/m3] MNP Density
-Md_measured = 150;                  % [emu/g]
-Md = Md_measured*rho_mnp;         % [A/m] Domain Magnetization
+f = 1.20e5;    % [Hz] Magnetic Field Frequency f = 163 kHz
 
-%% This section has particle magnetic and physical properties for Fe3O4 nanoparticles just to test
-%%% Magnetic Nanoparticle Physical and Magnetic Parameters MNP Used: Fe3O4
-% d_mnp = 16e-9;                 % [m] MNP Diameter d = 60 nm
+% %%% This section has particle magnetic and physical properties for Fe nanoparticles being used in in-vivo experiments
+% %%% Magnetic Nanoparticle Physical and Magnetic Parameters MNP Used: Fe3O4
+% d_mnp = 60e-9;                 % [m] MNP Diameter d = 60 nm
 % delta_l = 0.1*d_mnp;                 % [m] Liquid Layer Thickness on the Hard Solid MNP delta = 1 nm
 % dh_mnp = d_mnp+2*delta_l;       % [m] MNP Hydrodynamic Diameter
 % %%% domain magnetization
@@ -444,16 +461,29 @@ Md = Md_measured*rho_mnp;         % [A/m] Domain Magnetization
 % % conversion of emu/g to [A/m]
 % % 1 emu/g = 1Am2/kg
 % % Am2/kg to A/m obtained by multiplying with density in kg/m3
-% rho_mnp = 5180;        % [kg/m3] MNP Density
-% Md = 446*1000;         % [A/m] Domain Magnetization
+% rho_mnp = 7874;        % [kg/m3] MNP Density
+% Md_measured = 150;                  % [emu/g]
+% Md = Md_measured*rho_mnp;         % [A/m] Domain Magnetization
+
+%%% This section has particle magnetic and physical properties for Fe3O4 nanoparticles just to test
+%%% Magnetic Nanoparticle Physical and Magnetic Parameters MNP Used: Fe3O4
+d_mnp = 16e-9;                 % [m] MNP Diameter d = 60 nm
+delta_l = 0.1*d_mnp;                 % [m] Liquid Layer Thickness on the Hard Solid MNP delta = 1 nm
+dh_mnp = d_mnp+2*delta_l;       % [m] MNP Hydrodynamic Diameter
+%%% domain magnetization
+% Mass specific magnetization of MNPs used in mice experiments is 150 emu/g
+% conversion of emu/g to [A/m]
+% 1 emu/g = 1Am2/kg
+% Am2/kg to A/m obtained by multiplying with density in kg/m3
+rho_mnp = 5180;        % [kg/m3] MNP Density
+Md = 446*1000;         % [A/m] Domain Magnetization
 
 
 %%% MNP Dose and Magnetic Fluid Parameters
-mnp_mf_conc = 100; % [ug/ml] micrograms of MNP/milliliter of water
-mnp_mf_conc2 = mnp_mf_conc/1000; %[kg/m^3] kg of MNP/m3 of water
-mf_vol = 100; %[ul] microliters of nanofluid injected
-mf_vol2 = mf_vol*1e-9; % [m3] of nanofluid
-mnp_mass_kg = mnp_mf_conc2*mf_vol2;
+mnp_tumor_conc = 4; % %[kg/m^3] kg of MNP/m3 of tumor = 1mg/cm3 [ug/ml] micrograms of MNP/milliliter of water
+mf_vol = 1; %[ml] microliters of nanofluid injected
+mf_vol2 = mf_vol*1e-6; % [m3] of nanofluid
+mnp_mass_kg = mnp_tumor_conc*vol_t;
 mnp_vol = mnp_mass_kg/(rho_mnp); % [m3] of MNP
 mu_cf = 1e-3;                   % [Pa.s] Viscocity of the Carrier Fluid
 mnp_vol_frac = mnp_vol/mf_vol2;  %[-] Volume Fraction of MNP in MF
@@ -470,16 +500,17 @@ alpha_CF = 0.55;            % [-] Correction Factor for MNP Heating in MF and Ti
 %%% SAR Calculations
 gamma = Km*mnp_svol/(kB*T_bK);                    % [-] An intermediate parameters used in further calculations
 tauB = (3*mu_cf*mnp_hvol)/(kB*T_bK);                % [s] Brownian Relaxation Time of MNP
-tauN = tau0*(sqrt(pi)/2)*(1/sqrt(gamma))*exp(gamma);    % [s] Neel Relaxation Time of MNP
+tauN = tau0*(sqrt(pi)/2)*(1/sqrt(gamma))*exp(gamma) ;   % [s] Neel Relaxation Time of MNP
 % if isinf(tauN)
 %     error(['tauN is infinity and gamma = ', num2str(gamma)])
 % end
 One_by_tauE = 1/tauB+1/tauN;                       % [s] Effective Relaxation Time of MNP
 tauE = 1/One_by_tauE;
-%% Implicit Finite Difference Scheme using the Cauchy Boundary Condition on the outer boundary
+
+%%% Implicit Finite Difference Scheme using the Cauchy Boundary Condition on the outer boundary
 T = zeros(N, TS);
 T(:,1) = T_initial; % Initial Condition
-%%% Coefficient Matrix Three-Diagonal Generation
+% Coefficient Matrix Three-Diagonal Generation
 Lower = zeros(N, 1);
 Main  = zeros(N, 1);
 Upper = zeros(N, 1);
@@ -496,7 +527,7 @@ for i = 1:N
         Upper(i) = -alpha_t*dt/(dr^2) - alpha_t*dt/(r(i)*dr);
     end
 end
-%%% Solver Time Iterations
+% Solver Time Iterations
 for n = 2:TS
     H = HVector(n-1); %
     if H == 0
@@ -510,11 +541,7 @@ for n = 2:TS
         SAR = P/(rho_mnp*mnp_vol_frac);                     % [W/kg] MNP Specific Absorption Rate
         SAR_grams = SAR/1000;                              % [W/g] MNP Specific Absorption Rate
     end
-    % %%% Heat Source by MNP in Tumor
-    MNP_conc = mnp_mass_kg/vol_t;      % [kg/m3] Concentration of MNP in Tumor, Assuming MNPs are distributed uniformly and confined within the tumor only
-    %%% This is used in previous runs
-    % MNP_conc = 4; % 4 [mg/cm3] mnp concentration in tumor higher concentration just for testing
-    Q_MNP = alpha_CF*MNP_conc*SAR;  % [W/m3] Heat Generation by MNP in Tissue
+    Q_MNP = alpha_CF*mnp_tumor_conc*SAR;  % [W/m3] Heat Generation by MNP in Tissue
 
     %%% Assign Q_MNP to the center region only
     q_mnp = Q_MNP*t_loc;        % MNP heat generation [W/m^3] within the tumor only
@@ -525,8 +552,7 @@ for n = 2:TS
     T(:,n) = thomas_algorithm(Lower, Main, Upper, Force); % Spatio-Temporal Temperature
 end
 
-%%
-% Assume T is your matrix, time_vec is your time vector, and radial_vec is your radial vector
+
 % Spatial integration (integrating over radial locations for each time point)
 spatial_integral = trapz(r, T, 1);  % Integrate over the radial direction
 
@@ -536,10 +562,11 @@ total_integral = trapz(t, spatial_integral);  % Integrate over time
 % T_sum_time = sum(T,2);      % Summation of Temperature over all Times at each r location
 % G = trapz(r, T_sum_time);     % Integration of Temperature over the domain in 3D
 tempqoi = total_integral;
-%% Plot the results
-q_mnp_t = [q_mnp_time(:,1),q_mnp_time];
+%%% Plot the results
+% q_mnp_t = [q_mnp_time(:,1),q_mnp_time];
 % [RR,TT] = meshgrid(r,t);
 % figure('Position', [40, 40, 800, 600])
+% sgtitle('Fe_3O_4 NP Bioheat Solution')
 % subplot(2,2,1)
 % plot((1:length(HVector))*dt,HVector)
 % xlim([0,t(end)])
@@ -547,7 +574,7 @@ q_mnp_t = [q_mnp_time(:,1),q_mnp_time];
 % xlabel('Time [s]')
 % ylabel('H Amplitude, [A/m]');
 % title('Magnetic Field');
-%
+% 
 % subplot(2,2,2)
 % surf(RR,TT,q_mnp_t')
 % xlabel('Radial Distance [m]')
@@ -559,20 +586,23 @@ q_mnp_t = [q_mnp_time(:,1),q_mnp_time];
 % ylim([0,t(end)])
 % yticks([0:t(end)/4:t(end)]);
 % grid on;
-%
+% 
 % subplot(2,2,3)
+% figure(505)
 % plot_radius = [0,RT,R];
 % legend_String = string(plot_radius)+[" m Tumor Center"," m Tumor Edge"," m Outer Boundary"];
 % plot_rad_idx = (plot_radius/dr)+1;
 % plot(t,T(plot_rad_idx,:), 'LineWidth',2)
 % xlabel('Time, t [s]');
-% ylabel('Temperature, T [°C]');
 % xlim([0,t(end)])
 % xticks([0:t(end)/4:t(end)]);
+% cylims = ylim;
+% ylim ([floor(cylims(1)),ceil(cylims(2))])
+% ylabel('Temperature, T [°C]');
 % legend(legend_String, Location='best')
 % title('Temperature Elevations');
 % grid on;
-%
+% 
 % subplot(2,2,4)
 % plot_time = [0,60,120,t(end)];
 % legend_String = string(plot_time)+[" s"," s"," s"," s"];
@@ -582,10 +612,15 @@ q_mnp_t = [q_mnp_time(:,1),q_mnp_time];
 % xlim([0,R])
 % xticks(0:R/5:R);
 % ylabel('Temperature, T [°C]');
+% cylims = ylim;
+% ylim ([floor(cylims(1)),ceil(cylims(2))])
 % legend(legend_String, Location='best')
 % title('Spatial Temperature profile');
 % grid on;
-%% Tri-Diagonal Matrix Alogorithm for Linear System of Equation Solver
+% alltextObjects = findall(gcf,'-property','FontName');
+% set(alltextObjects, 'FontName','Times new Roman', 'FontSize',12)
+% saveas(gca,['Fe3O4SolutionForIG_',num2str(IG)],'png')
+%%% Tri-Diagonal Matrix Alogorithm for Linear System of Equation Solver
     function x = thomas_algorithm(Lower, Main, Upper, Force)
         nn = length(Force);
         c_star = zeros(nn, 1);
@@ -605,7 +640,8 @@ q_mnp_t = [q_mnp_time(:,1),q_mnp_time];
             x(ii) = d_star(ii) - c_star(ii) * x(ii+1);
         end
     end
-%% Steady-State Temperature Profiles without the external heating, to calculate initial condictions for the transient heat transfer model
+
+%%% Steady-State Temperature Profiles without the external heating, to calculate initial condictions for the transient heat transfer model
     function T_SS = steady_state_temperature(T_b, htc, T_amb, Qm_t, rho_b, cp_b, w_t, k_t, r)
         % Inputs:
         % T_b: Blood temperature (°C)
@@ -668,7 +704,3 @@ q_mnp_t = [q_mnp_time(:,1),q_mnp_time];
         % grid on;
     end
 end
-
-
-
-

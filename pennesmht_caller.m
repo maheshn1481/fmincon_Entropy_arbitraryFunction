@@ -32,17 +32,36 @@ for i = 1:size(InitialGuess,2)
 
     Htime = InitialGuess(:,i); % Constant H in time
 
-    for j = round(size(data,1)/2)%1:size(data,1)
+    for j = 1%:size(data,1)
         Qm_t = 0;                   % [W/m3] Tumor Metabolic Heat
         k_t=data(j,1); % [W/m/K] Thermal Conductivity
         w_t = data(j,2); % [1/s] Blood perfusion rate
         rhocp_t = data(j,3); % [J/m^3/K] Density and Specific Heat Production
         Km = data(j,4); % [J/m^3] Anisotropy Constant
-        tempqoi = pennesmht_fe(k_t,w_t,rhocp_t,Km,Htime,deltat,i,j);
-        Gains_InitialGuess(j,1:size(data,2)) = data(j,:);
-        Gains_InitialGuess(j,i+size(data,2)) = tempqoi;
+        Gain(j,i) = pennesmht_fe(k_t,w_t,rhocp_t,Km,Htime,deltat);
+        % Gains_InitialGuess(j,1:size(data,2)) = data(j,:);
+        % Gains_InitialGuess(j,i+size(data,2)) = tempqoi;
     end
 end
+%% deltaT plots
+% for run1
+All_runs_initial = Temperatures(1,1,:);
+All_runs_final = Temperatures(1,end,:);
+DT = All_runs_final-All_runs_initial;
+close all
+plot(DT(:))
+xlabel('Uncertain Variabl Combinations')
+ylabel(['Change in Temperature (', char(176), 'C)'], 'FontSize', 14)
+title('Concentration = 4 mg/cm^3')
+set(gca, 'FontName', 'Times New Roman', 'FontSize', 15)  % Set for the current axes
+set(findall(gcf, '-property', 'FontName'), 'FontName', 'Times New Roman') % Set for all elements in the figure
+set(findall(gcf, '-property', 'FontSize'), 'FontSize', 15) % Set font size for all elements in the figure
+%%
+SAR = [5.5,11,16.5,22,27.5];
+plot(H_range,SAR)
+SAR2 = SAR *1000
+Q = SAR2*0.0192
+
 %%
 % close all
 % % Define different line styles

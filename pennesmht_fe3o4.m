@@ -1,5 +1,54 @@
+clc
+clear
+close all
+set(0, 'DefaultAxesXColor', 'k', ...
+    'DefaultAxesYColor', 'k', ...
+    'DefaultTextColor', 'k');
+%% Variable Setup
+t_end = 1800; % [s] End time of the simulation
+deltat = 60; % [s] Delta
+Ntime = t_end/deltat; % [-] Number of time step
+Nspecies = 1
+
+%%% Mean uncertain variables
+k_t=.492; % [W/m/K] Thermal Conductivity
+w_t = 0.00682; % [1/s] Blood perfusion rate
+rhocp_t = 3589229; % [J/m^3/K] Density and Specific Heat Production
+Km = 31500; % [J/m^3] Anisotropy Constant %% A variable to be recoved from the experiments/data
+
+%%% Time varying Magnetic Field Amplitude Vector Creation
+Hmin = 8000; % [A/m] Minimum value of Magnetic Field the device can generate
+Hmax = 40000; % [A/m] Maximum value of Magnetic Field the device can generate
+H_range = (Hmin:Hmin:Hmax)'; % Possible steps of Magnetic Field on the device
+
+% %%% Calculating initial gain/total signal and the Mutual Information for all the trail initial guesses
+
+% InitialGuess = 0*ones(Ntime,1); IG =1;
+% Htime = InitialGuess; % Constant H in time
+
+
+% InitialGuess = H_range(1)*ones(Ntime,1);  IG =2;
+% Htime = InitialGuess; % Constant H in time
+
+
+% InitialGuess = H_range(2)*ones(Ntime,1);  IG =3;
+% Htime = InitialGuess; % Constant H in time
+
+
+InitialGuess = H_range(3)*ones(Ntime,1);  IG =4;
+Htime = InitialGuess; % Constant H in time
+
+
+% InitialGuess = H_range(4)*ones(Ntime,1);  IG =5;
+% Htime = InitialGuess; % Constant H in time
+
+
+% InitialGuess = H_range(5)*ones(Ntime,1);  IG =6;
+% Htime = InitialGuess; % Constant H in time
+
+
 %% Pennes Solver
-function tempqoi = pennesmht_fe3o4(k_t,w_t,rhocp_t,Km,Htime,deltat,IG,Run)
+% function tempqoi = pennesmht_fe3o4(k_t,w_t,rhocp_t,Km,Htime,deltat)
 %%% Following are the inputs for the function
 % rhocp_t = Tissue Density [kg/m3] * cp_t = Tissue Specific Heat [J/kg/K]
 % k_t = Tissue Thermal Conductivity [W/m/K]
@@ -46,8 +95,23 @@ T_SS = steady_state_temperature(T_b, htc, T_amb, Qm_t, rho_b, cp_b, w_t, k_t, r)
 T_initial = T_SS;     % [°C] Initial Condition Temperature
 % T_initial = 37;     % [°C] Initial Condition Temperature
 alpha_t = k_t/(rhocp_t); % Tissue Thermal diffusivity [m^2/s]
-f = 1.63e5;    % [Hz] Magnetic Field Frequency f = 163 kHz
+f = 1.20e5;    % [Hz] Magnetic Field Frequency f = 163 kHz
 
+% %%% This section has particle magnetic and physical properties for Fe nanoparticles being used in in-vivo experiments
+% %%% Magnetic Nanoparticle Physical and Magnetic Parameters MNP Used: Fe3O4
+% d_mnp = 60e-9;                 % [m] MNP Diameter d = 60 nm
+% delta_l = 0.1*d_mnp;                 % [m] Liquid Layer Thickness on the Hard Solid MNP delta = 1 nm
+% dh_mnp = d_mnp+2*delta_l;       % [m] MNP Hydrodynamic Diameter
+% %%% domain magnetization
+% % Mass specific magnetization of MNPs used in mice experiments is 150 emu/g
+% % conversion of emu/g to [A/m]
+% % 1 emu/g = 1Am2/kg
+% % Am2/kg to A/m obtained by multiplying with density in kg/m3
+% rho_mnp = 7874;        % [kg/m3] MNP Density
+% Md_measured = 150;                  % [emu/g]
+% Md = Md_measured*rho_mnp;         % [A/m] Domain Magnetization
+
+%%% This section has particle magnetic and physical properties for Fe3O4 nanoparticles just to test
 %%% Magnetic Nanoparticle Physical and Magnetic Parameters MNP Used: Fe3O4
 d_mnp = 16e-9;                 % [m] MNP Diameter d = 60 nm
 delta_l = 0.1*d_mnp;                 % [m] Liquid Layer Thickness on the Hard Solid MNP delta = 1 nm
@@ -58,17 +122,14 @@ dh_mnp = d_mnp+2*delta_l;       % [m] MNP Hydrodynamic Diameter
 % 1 emu/g = 1Am2/kg
 % Am2/kg to A/m obtained by multiplying with density in kg/m3
 rho_mnp = 5180;        % [kg/m3] MNP Density
-% Md_measured = 150;                  % [emu/g]
-% Md = Md_measured*rho_mnp;         % [A/m] Domain Magnetization
 Md = 446*1000;         % [A/m] Domain Magnetization
 
 
 %%% MNP Dose and Magnetic Fluid Parameters
-mnp_mf_conc = 100; % [ug/ml] micrograms of MNP/milliliter of water
-mnp_mf_conc2 = mnp_mf_conc/1000; %[kg/m^3] kg of MNP/m3 of water
-mf_vol = 100; %[ul] microliters of nanofluid injected
-mf_vol2 = mf_vol*1e-9; % [m3] of nanofluid
-mnp_mass_kg = mnp_mf_conc2*mf_vol2;
+mnp_tumor_conc = 4; % %[kg/m^3] kg of MNP/m3 of tumor = 1mg/cm3 [ug/ml] micrograms of MNP/milliliter of water
+mf_vol = 1; %[ml] microliters of nanofluid injected
+mf_vol2 = mf_vol*1e-6; % [m3] of nanofluid
+mnp_mass_kg = mnp_tumor_conc*vol_t;
 mnp_vol = mnp_mass_kg/(rho_mnp); % [m3] of MNP
 mu_cf = 1e-3;                   % [Pa.s] Viscocity of the Carrier Fluid
 mnp_vol_frac = mnp_vol/mf_vol2;  %[-] Volume Fraction of MNP in MF
@@ -85,16 +146,17 @@ alpha_CF = 0.55;            % [-] Correction Factor for MNP Heating in MF and Ti
 %%% SAR Calculations
 gamma = Km*mnp_svol/(kB*T_bK);                    % [-] An intermediate parameters used in further calculations
 tauB = (3*mu_cf*mnp_hvol)/(kB*T_bK);                % [s] Brownian Relaxation Time of MNP
-tauN = tau0*(sqrt(pi)/2)*(1/sqrt(gamma))*exp(gamma);    % [s] Neel Relaxation Time of MNP
+tauN = tau0*(sqrt(pi)/2)*(1/sqrt(gamma))*exp(gamma) ;   % [s] Neel Relaxation Time of MNP
 % if isinf(tauN)
 %     error(['tauN is infinity and gamma = ', num2str(gamma)])
 % end
 One_by_tauE = 1/tauB+1/tauN;                       % [s] Effective Relaxation Time of MNP
 tauE = 1/One_by_tauE;
-%% Implicit Finite Difference Scheme using the Cauchy Boundary Condition on the outer boundary
+
+%%% Implicit Finite Difference Scheme using the Cauchy Boundary Condition on the outer boundary
 T = zeros(N, TS);
 T(:,1) = T_initial; % Initial Condition
-%%% Coefficient Matrix Three-Diagonal Generation
+% Coefficient Matrix Three-Diagonal Generation
 Lower = zeros(N, 1);
 Main  = zeros(N, 1);
 Upper = zeros(N, 1);
@@ -111,12 +173,11 @@ for i = 1:N
         Upper(i) = -alpha_t*dt/(dr^2) - alpha_t*dt/(r(i)*dr);
     end
 end
-%%% Solver Time Iterations
+% Solver Time Iterations
 for n = 2:TS
     H = HVector(n-1); %
     if H == 0
         SAR = 0;
-        SAR_grams = SAR/1000;                              % [W/g] MNP Specific Absorption Rate
     else
         zeta = mu0*Md*H*mnp_svol/(kB*T_bK);                 % [-] Langevin parameter
         X_i = mu0*(Md^2)*mnp_vol_frac*mnp_svol/(3*kB*T_bK); % [-] Initial Magnetic Susceptibility
@@ -126,23 +187,18 @@ for n = 2:TS
         SAR = P/(rho_mnp*mnp_vol_frac);                     % [W/kg] MNP Specific Absorption Rate
         SAR_grams = SAR/1000;                              % [W/g] MNP Specific Absorption Rate
     end
-    %%% Heat Source by MNP in Tumor
-    % MNP_conc = mnp_mass_kg/vol_t;      % [kg/m3] Concentration of MNP in Tumor, Assuming MNPs are distributed uniformly and confined within the tumor only
-    MNP_conc = 4;
-    Q_MNP = alpha_CF*MNP_conc*SAR;  % [W/m3] Heat Generation by MNP in Tissue
-    SARtime(1,n-1) = SAR_grams;
-    %%% Assign Q_MNP to the center region only
-    q_mnp = Q_MNP*t_loc;        % MNP heat generation [W/m^3] On/Off Pulsating with time
-    q_mnp_time(:,n-1) = q_mnp;
+    Q_MNP = alpha_CF*mnp_tumor_conc*SAR;  % [W/m3] Heat Generation by MNP in Tissue
 
+    %%% Assign Q_MNP to the center region only
+    q_mnp = Q_MNP*t_loc;        % MNP heat generation [W/m^3] within the tumor only
+    q_mnp_time(:,n-1) = q_mnp;
     Force = zeros(N,1); % Force vector
     Force(1:N-1)  = T(1:N-1,n-1) + (rho_b*cp_b.*w_t*dt*T_b + Qm_t*dt+ q_mnp(1:N-1)*dt)/(rhocp_t);
     Force(N) = htc*T_amb;
     T(:,n) = thomas_algorithm(Lower, Main, Upper, Force); % Spatio-Temporal Temperature
 end
 
-%%
-% Assume T is your matrix, time_vec is your time vector, and radial_vec is your radial vector
+
 % Spatial integration (integrating over radial locations for each time point)
 spatial_integral = trapz(r, T, 1);  % Integrate over the radial direction
 
@@ -152,24 +208,17 @@ total_integral = trapz(t, spatial_integral);  % Integrate over time
 % T_sum_time = sum(T,2);      % Summation of Temperature over all Times at each r location
 % G = trapz(r, T_sum_time);     % Integration of Temperature over the domain in 3D
 tempqoi = total_integral;
-%% Plot the results
+%%% Plot the results
 q_mnp_t = [q_mnp_time(:,1),q_mnp_time];
 [RR,TT] = meshgrid(r,t);
-close all
-fig1 = figure('Position', [40, 40, 800, 600]);
-sgtitle([sprintf('k = %.3f, w = %.5f, crho = %d, K = %d, Gain = %.3f',k_t,w_t,rhocp_t,Km,tempqoi)])
+figure('Position', [40, 40, 800, 600])
+sgtitle('Fe_3O_4 NP Bioheat Solution')
 subplot(2,2,1)
-yyaxis left
-plot(t(2:end),HVector)
-ylabel('H Amplitude, [A/m]');
-hold on
-yyaxis right
-plot(t(2:end),SARtime)
-ylabel('SAR, [W/g]');
-hold off
+plot((1:length(HVector))*dt,HVector)
 xlim([0,t(end)])
 xticks([0:t(end)/4:t(end)]);
 xlabel('Time [s]')
+ylabel('H Amplitude, [A/m]');
 title('Magnetic Field');
 
 subplot(2,2,2)
@@ -185,14 +234,17 @@ yticks([0:t(end)/4:t(end)]);
 grid on;
 
 subplot(2,2,3)
+% figure(505)
 plot_radius = [0,RT,R];
 legend_String = string(plot_radius)+[" m Tumor Center"," m Tumor Edge"," m Outer Boundary"];
 plot_rad_idx = (plot_radius/dr)+1;
 plot(t,T(plot_rad_idx,:), 'LineWidth',2)
 xlabel('Time, t [s]');
-ylabel('Temperature, T [°C]');
 xlim([0,t(end)])
 xticks([0:t(end)/4:t(end)]);
+cylims = ylim;
+ylim ([floor(cylims(1)),ceil(cylims(2))])
+ylabel('Temperature, T [°C]');
 legend(legend_String, Location='best')
 title('Temperature Elevations');
 grid on;
@@ -206,95 +258,99 @@ xlabel('Radial distance, r [m]');
 xlim([0,R])
 xticks(0:R/5:R);
 ylabel('Temperature, T [°C]');
+cylims = ylim;
+ylim ([floor(cylims(1)),ceil(cylims(2))])
 legend(legend_String, Location='best')
 title('Spatial Temperature profile');
 grid on;
-set(findall(gcf, '-property', 'FontName'), 'FontName', 'Times New Roman', 'FontSize', 12);
-savename = [sprintf('Fe3O4_Run_%d_IG_%d',Run,IG)]
-saveas(fig1,savename,'png')
-pause(0.5)
+alltextObjects = findall(gcf,'-property','FontName');
 
-%% Tri-Diagonal Matrix Alogorithm for Linear System of Equation Solver
-    function x = thomas_algorithm(Lower, Main, Upper, Force)
-        nn = length(Force);
-        c_star = zeros(nn, 1);
-        d_star = zeros(nn, 1);
-        x = zeros(nn, 1);
+% set(alltextObjects, 'FontName','Times new Roman', 'FontSize',12)
+% saveas(gca,['Fe3O4SolutionForIG_',num2str(IG)],'png')
+%%% Tri-Diagonal Matrix Alogorithm for Linear System of Equation Solver
+function x = thomas_algorithm(Lower, Main, Upper, Force)
+nn = length(Force);
+c_star = zeros(nn, 1);
+d_star = zeros(nn, 1);
+x = zeros(nn, 1);
 
-        c_star(1) = Upper(1) / Main(1);
-        d_star(1) = Force(1) / Main(1);
+c_star(1) = Upper(1) / Main(1);
+d_star(1) = Force(1) / Main(1);
 
-        for ii = 2:nn
-            c_star(ii) = Upper(ii) / (Main(ii) - Lower(ii) * c_star(ii-1));
-            d_star(ii) = (Force(ii) - Lower(ii) * d_star(ii-1)) / (Main(ii) - Lower(ii) * c_star(ii-1));
-        end
-
-        x(nn) = d_star(nn);
-        for ii = nn-1:-1:1
-            x(ii) = d_star(ii) - c_star(ii) * x(ii+1);
-        end
-    end
-%% Steady-State Temperature Profiles
-    function T_SS = steady_state_temperature(T_b, htc, T_amb, Qm_t, rho_b, cp_b, w_t, k_t, r)
-    % Inputs:
-    % T_b: Blood temperature (°C)
-    % htc: Heat transfer coefficient (W/m^2K)
-    % T_amb: Ambient temperature (°C)
-    % Qm_t: Metabolic heat generation rate (W/m^3)
-    % rho_b: Blood density (kg/m^3)
-    % cp_b: Blood specific heat capacity (J/kgK)
-    % w_t: Blood perfusion rate (1/s)
-    % k_t: Tissue thermal conductivity (W/mK)
-    % R: Radius of the domain (m)
-    % N: Number of radial grid points
-
-    % Discretization parameters
-    delta_r = r(2)-r(1);        % Radial step size
-    Num_ele = length(r); % Radial positions
-    
-    % Initialize system matrix A and right-hand side vector b
-    A = zeros(Num_ele, Num_ele);
-    b = zeros(Num_ele, 1);
-    
-    % Coefficients for blood perfusion and metabolic heat generation
-    perfusion_term = w_t * rho_b * cp_b;
-    
-    % Fill the matrix A and vector b for internal nodes (i = 2 to N-1)
-    for idx = 2:Num_ele-1
-        r_i = r(idx);
-        
-        % Coefficients for the discretized equation
-        coef_T_ip1 = (k_t / delta_r^2) + (k_t / (r_i *  delta_r)); % T_{i+1}
-        coef_T_im1 = (k_t / delta_r^2) - (k_t / (r_i *  delta_r)); % T_{i-1}
-        coef_T_i = -(2 * k_t / delta_r^2 + perfusion_term);       % T_i
-        
-        % Populate the matrix A and vector b
-        A(idx, idx+1) = coef_T_ip1;      % T_{i+1}
-        A(idx, idx-1) = coef_T_im1;      % T_{i-1}
-        A(idx, idx) = coef_T_i;          % T_i
-        b(idx) = -perfusion_term * T_b - Qm_t;
-    end
-    
-    % Boundary condition at r = 0 (Symmetry: T_1 = T_0)
-    A(1, 1) = 1;
-    A(1, 2) = -1;
-    b(1) = 0;
-    
-    % Boundary condition at r = R (Convective boundary condition)
-    A(Num_ele, Num_ele-1) = k_t / delta_r;
-    A(Num_ele, Num_ele) = -(k_t / delta_r + htc);
-    b(Num_ele) = -htc * T_amb;
-    
-    % Solve the system of linear equations A*T = b
-    T_SS = A \ b;
-    
-    % Plot the temperature profile
-    % figure;
-    % plot(r, T_SS, '-o');
-    % xlabel('Radial Position (m)');
-    % ylabel('Temperature (°C)');
-    % title('Temperature Profile in the Tissue');
-    % grid on;
+for ii = 2:nn
+    c_star(ii) = Upper(ii) / (Main(ii) - Lower(ii) * c_star(ii-1));
+    d_star(ii) = (Force(ii) - Lower(ii) * d_star(ii-1)) / (Main(ii) - Lower(ii) * c_star(ii-1));
 end
 
+x(nn) = d_star(nn);
+for ii = nn-1:-1:1
+    x(ii) = d_star(ii) - c_star(ii) * x(ii+1);
 end
+end
+
+%%% Steady-State Temperature Profiles without the external heating, to calculate initial condictions for the transient heat transfer model
+function T_SS = steady_state_temperature(T_b, htc, T_amb, Qm_t, rho_b, cp_b, w_t, k_t, r)
+% Inputs:
+% T_b: Blood temperature (°C)
+% htc: Heat transfer coefficient (W/m^2K)
+% T_amb: Ambient temperature (°C)
+% Qm_t: Metabolic heat generation rate (W/m^3)
+% rho_b: Blood density (kg/m^3)
+% cp_b: Blood specific heat capacity (J/kgK)
+% w_t: Blood perfusion rate (1/s)
+% k_t: Tissue thermal conductivity (W/mK)
+% R: Radius of the domain (m)
+% N: Number of radial grid points
+
+% Discretization parameters
+delta_r = r(2)-r(1);        % Radial step size
+Num_ele = length(r); % Radial positions
+
+% Initialize system matrix A and right-hand side vector b
+A = zeros(Num_ele, Num_ele);
+b = zeros(Num_ele, 1);
+
+% Coefficients for blood perfusion and metabolic heat generation
+perfusion_term = w_t * rho_b * cp_b;
+
+% Fill the matrix A and vector b for internal nodes (i = 2 to N-1)
+for idx = 2:Num_ele-1
+    r_i = r(idx);
+
+    % Coefficients for the discretized equation
+    coef_T_ip1 = (k_t / delta_r^2) + (k_t / (r_i *  delta_r)); % T_{i+1}
+    coef_T_im1 = (k_t / delta_r^2) - (k_t / (r_i *  delta_r)); % T_{i-1}
+    coef_T_i = -(2 * k_t / delta_r^2 + perfusion_term);       % T_i
+
+    % Populate the matrix A and vector b
+    A(idx, idx+1) = coef_T_ip1;      % T_{i+1}
+    A(idx, idx-1) = coef_T_im1;      % T_{i-1}
+    A(idx, idx) = coef_T_i;          % T_i
+    b(idx) = -perfusion_term * T_b - Qm_t;
+end
+
+% Boundary condition at r = 0 (Symmetry: T_1 = T_0)
+A(1, 1) = 1;
+A(1, 2) = -1;
+b(1) = 0;
+
+% Boundary condition at r = R (Convective boundary condition)
+A(Num_ele, Num_ele-1) = k_t / delta_r;
+A(Num_ele, Num_ele) = -(k_t / delta_r + htc);
+b(Num_ele) = -htc * T_amb;
+
+% Solve the system of linear equations A*T = b
+T_SS = A \ b;
+
+% Plot the temperature profile
+% figure;
+% plot(r, T_SS, '-o');
+% xlabel('Radial Position (m)');
+% ylabel('Temperature (°C)');
+% title('Temperature Profile in the Tissue');
+% grid on;
+end
+
+
+
+
